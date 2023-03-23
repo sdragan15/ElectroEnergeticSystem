@@ -1,4 +1,5 @@
-﻿using EESystem.Services.Interface;
+﻿using EESystem.Model;
+using EESystem.Services.Interface;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,15 @@ namespace EESystem.Services.Implementation
 {
     public class CalculationService : ICalculationService
     {
+        private readonly int _resolution;
+        private readonly double _substationWidth = 5;
+        private readonly double _nodeWidth = 1;
+
+        public CalculationService(int resolution)
+        {
+            _resolution = resolution;
+        }
+
         /// <summary>
         /// Maps latitude and longitude to range [0, 1]
         /// </summary>
@@ -22,6 +32,163 @@ namespace EESystem.Services.Implementation
             //newX = Math.Abs(y - 19.95) * 2000;
             newX = (x - 19.74) * (1 / (19.95 - 19.74));     // 19.95 je max latituda, 19.74 min.
             newY = Math.Abs((y - 45.329) * (1 / (45.329 - 45.19)));     // Formula eksperimentalno izvucena
+        }
+
+        public List<NodeEntity> CalculateNodesCoordByResolution(List<NodeEntity> nodes)
+        {
+            var result = new List<NodeEntity>();
+
+            foreach (var item in nodes)
+            {
+                double tempX = item.X;
+                double tempY = item.Y;
+
+                double coordX = Math.Floor(tempX / _resolution);
+                double coordY = Math.Floor(tempY / _resolution);
+                item.X = Math.Floor(tempX / _resolution) * _resolution - _nodeWidth / 2;
+                item.Y = Math.Floor(tempY / _resolution) * _resolution - _nodeWidth / 2;
+
+                if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), item))
+                {
+                    result.Add(item);
+                    continue;
+                }
+
+                int radius = 0;
+                bool added = false;
+                while (radius <= 5)
+                {
+                    radius++;
+
+                    tempX = coordX - radius;
+                    tempY = coordY - radius;
+                    for (int i = 0; i <= radius* 2; i++)
+                    {
+                        tempX += i;
+                        
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _nodeWidth / 2,
+                            Y = tempY * _resolution - _nodeWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                    tempX = coordX + radius;
+                    tempY = coordY - radius;
+                    for (int i = 0; i <= radius * 2; i++)
+                    {
+                        tempY += i;
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _nodeWidth / 2,
+                            Y = tempY * _resolution - _nodeWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                    tempX = coordX + radius;
+                    tempY = coordY + radius;
+                    for (int i = 0; i <= radius * 2; i++)
+                    {
+                        tempX -= i;
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _nodeWidth / 2,
+                            Y = tempY * _resolution - _nodeWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                    tempX = coordX - radius;
+                    tempY = coordY + radius;
+                    for (int i = 0; i <= radius * 2; i++)
+                    {
+                        tempY -= i;
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _nodeWidth / 2,
+                            Y = tempY * _resolution - _nodeWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Calculated coordinates by resolution, if coordinates is same it moves to the first free coords
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <param name="newX"></param>
+        /// <param name="newY"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        public List<SubstationEntity> CalculateSubstaionCoordByResolution(List<SubstationEntity> substations)
+        {
+            var result = new List<SubstationEntity>();
+
+            foreach(var item in substations)
+            {
+                double x = item.X;
+                double y = item.Y;
+
+                item.X = Math.Floor(x / _resolution) * _resolution - _substationWidth/2;
+                item.Y = Math.Floor(y / _resolution) * _resolution - _substationWidth / 2;
+
+                if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), item))
+                {
+                    result.Add(item);
+                    continue;
+                }
+                    
+                int radius = 1;
+                //while (true)
+                //{
+                    
+                //}
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -71,6 +238,11 @@ namespace EESystem.Services.Implementation
 
             longitude = ((delt * (180.0 / Math.PI)) + s) + diflon;
             latitude = ((lat + (1 + e2cuadrada * Math.Pow(Math.Cos(lat), 2) - (3.0 / 2.0) * e2cuadrada * Math.Sin(lat) * Math.Cos(lat) * (tao - lat)) * (tao - lat)) * (180.0 / Math.PI)) + diflat;
+        }
+
+        private bool ContainsCoord(List<PowerEntity> entities, PowerEntity entity)
+        {
+            return entities.Where(x => x.X == entity.X && x.Y == entity.Y).FirstOrDefault() != null ? true : false;
         }
     }
 }

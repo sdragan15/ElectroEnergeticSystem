@@ -4,11 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:EESystem"
+        xmlns:CustomControls="clr-namespace:WpfPanAndZoom.CustomControls"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <DockPanel>
-        <Canvas x:Name="CanvasArea" DockPanel.Dock="Bottom">
-
-        </Canvas>
+        <CustomControls:PanAndZoomCanvas x:Name="CanvasArea"/>
     </DockPanel>
 </Window>

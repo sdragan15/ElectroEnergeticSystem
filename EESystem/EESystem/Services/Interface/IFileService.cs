@@ -11,6 +11,6 @@ namespace EESystem.Services.Interface
     public interface IFileService
     {
         public List<SubstationEntity> LoadSubstationNetwork();
-        public void LoadNodesNetwork();
+        public List<NodeEntity> LoadNodesNetwork();
     }
 }

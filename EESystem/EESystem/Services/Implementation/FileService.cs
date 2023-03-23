@@ -15,6 +15,8 @@ namespace EESystem.Services.Implementation
 {
     public class FileService : IFileService
     {
+        public double CanvasWidth = 700;
+        public double CanvasHeight = 400;
         private XmlDocument xmlDoc = new XmlDocument();
         private readonly string _filePath;
         private readonly ICalculationService _calculationService;
@@ -26,9 +28,36 @@ namespace EESystem.Services.Implementation
             xmlDoc.Load("Geographic.xml");
         }
 
-        public void LoadNodesNetwork()
+        public List<NodeEntity> LoadNodesNetwork()
         {
-            throw new NotImplementedException();
+            var result = new List<NodeEntity>();
+
+            XmlNodeList nodeList;
+
+
+            nodeList = xmlDoc.DocumentElement.SelectNodes("/NetworkModel/Nodes/NodeEntity");
+            foreach (XmlNode node in nodeList)
+            {
+                NodeEntity nodeobj = new NodeEntity();
+
+                nodeobj.Id = long.Parse(node.SelectSingleNode("Id").InnerText);
+                nodeobj.Name = node.SelectSingleNode("Name").InnerText;
+                nodeobj.X = double.Parse(node.SelectSingleNode("X").InnerText, CultureInfo.InvariantCulture);
+                nodeobj.Y = double.Parse(node.SelectSingleNode("Y").InnerText, CultureInfo.InvariantCulture);
+
+                double noviX, noviY;
+                double canvasX, canvasY;
+
+                _calculationService.ToLatLon(nodeobj.X, nodeobj.Y, 34, out noviY, out noviX);
+
+                _calculationService.CalculateCanvasCoords(noviX, noviY, out canvasX, out canvasY);
+
+                nodeobj.X = canvasX * CanvasWidth;
+                nodeobj.Y = canvasY * CanvasHeight;
+                result.Add(nodeobj);
+            }
+
+            return result;
         }
 
         public List<SubstationEntity> LoadSubstationNetwork()
@@ -36,6 +65,9 @@ namespace EESystem.Services.Implementation
             var result = new List<SubstationEntity>();
 
             XmlNodeList nodeList;
+
+            double noviX, noviY;
+            double canvasX, canvasY;
 
             nodeList = xmlDoc.DocumentElement.SelectNodes("/NetworkModel/Substations/SubstationEntity");
             foreach (XmlNode node in nodeList)
@@ -46,13 +78,11 @@ namespace EESystem.Services.Implementation
                 sub.X = double.Parse(node.SelectSingleNode("X").InnerText, CultureInfo.InvariantCulture);
                 sub.Y = double.Parse(node.SelectSingleNode("Y").InnerText, CultureInfo.InvariantCulture);
 
-                double noviX, noviY;
                 _calculationService.ToLatLon(sub.X, sub.Y, 34, out noviY, out noviX);
 
-                double canvasX, canvasY;
                 _calculationService.CalculateCanvasCoords(noviX, noviY, out canvasX, out canvasY);
-                sub.X = canvasX;
-                sub.Y = canvasY;
+                sub.X = canvasX * CanvasWidth;
+                sub.Y = canvasY * CanvasHeight;
 
                 result.Add(sub);
             }

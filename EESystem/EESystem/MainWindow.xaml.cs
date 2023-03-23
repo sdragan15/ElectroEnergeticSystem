@@ -29,21 +29,26 @@ namespace EESystem
         public double CanvasHeight = 400;
         private IFileService _fileService;
         private ICalculationService _calcService;
+        private int nodesWidth = 1;
+        private int resolution = 2;
 
         public MainWindow()
         {
-            _calcService = new CalculationService();
+            _calcService = new CalculationService(resolution);
             _fileService = new FileService(_calcService, "Geographic.xml");
 
             InitializeComponent();
             LoadSubstations();
+            LoadNodes();
         }
 
         private void LoadSubstations()
         {
             var substations = _fileService.LoadSubstationNetwork();
 
-            foreach(SubstationEntity item in substations)
+            var newSubstations = _calcService.CalculateSubstaionCoordByResolution(substations);
+
+            foreach(SubstationEntity item in newSubstations)
             {
                 Ellipse ellipse = new Ellipse();
                 ellipse.Width = 5;
@@ -52,8 +57,28 @@ namespace EESystem
 
                 CanvasArea.Children.Add(ellipse);
 
-                Canvas.SetLeft(ellipse, item.X * CanvasWidth);
-                Canvas.SetTop(ellipse, item.Y * CanvasHeight);
+                Canvas.SetLeft(ellipse, item.X);
+                Canvas.SetTop(ellipse, item.Y);
+            }
+        }
+
+        private void LoadNodes()
+        {
+            var nodes = _fileService.LoadNodesNetwork();
+
+            var newNodes = _calcService.CalculateNodesCoordByResolution(nodes);
+
+            foreach(var node in newNodes)
+            {
+                Ellipse ellipse = new Ellipse();
+                ellipse.Width = nodesWidth;
+                ellipse.Height = nodesWidth;
+                ellipse.Fill = new SolidColorBrush(Colors.Black);
+
+                CanvasArea.Children.Add(ellipse);
+
+                Canvas.SetLeft(ellipse, node.X);
+                Canvas.SetTop(ellipse, node.Y);
             }
         }
     }
