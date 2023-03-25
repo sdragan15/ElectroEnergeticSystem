@@ -15,17 +15,20 @@ namespace EESystem.Services.Implementation
 {
     public class FileService : IFileService
     {
-        public double CanvasWidth = 700;
-        public double CanvasHeight = 400;
+        private readonly double _canvasWidth;
+        private readonly double _canvasHeight;
         private XmlDocument xmlDoc = new XmlDocument();
         private readonly string _filePath;
         private readonly ICalculationService _calculationService;
 
-        public FileService(ICalculationService calculationService, string filePath)
+        public FileService(ICalculationService calculationService, string filePath, 
+            double canvasWidth, double canvasHeight)
         {
             _calculationService = calculationService;
             _filePath = filePath;
             xmlDoc.Load("Geographic.xml");
+            _canvasWidth = canvasWidth;
+            _canvasHeight = canvasHeight;
         }
 
         public List<NodeEntity> LoadNodesNetwork()
@@ -52,8 +55,8 @@ namespace EESystem.Services.Implementation
 
                 _calculationService.CalculateCanvasCoords(noviX, noviY, out canvasX, out canvasY);
 
-                nodeobj.X = canvasX * CanvasWidth;
-                nodeobj.Y = canvasY * CanvasHeight;
+                nodeobj.X = canvasX * _canvasWidth;
+                nodeobj.Y = canvasY * _canvasHeight;
                 result.Add(nodeobj);
             }
 
@@ -81,10 +84,28 @@ namespace EESystem.Services.Implementation
                 _calculationService.ToLatLon(sub.X, sub.Y, 34, out noviY, out noviX);
 
                 _calculationService.CalculateCanvasCoords(noviX, noviY, out canvasX, out canvasY);
-                sub.X = canvasX * CanvasWidth;
-                sub.Y = canvasY * CanvasHeight;
+                sub.X = canvasX * _canvasWidth;
+                sub.Y = canvasY * _canvasHeight;
 
                 result.Add(sub);
+            }
+
+            return result;
+        }
+
+        public List<LineEntity> LoadLinesNetwork()
+        {
+            var result = new List<LineEntity>();
+            XmlNodeList nodeList;
+
+            nodeList = xmlDoc.DocumentElement.SelectNodes("/NetworkModel/Lines/LineEntity");
+            foreach (XmlNode node in nodeList)
+            {
+                LineEntity l = new LineEntity();
+                l.FirstEnd = long.Parse(node.SelectSingleNode("FirstEnd").InnerText, CultureInfo.InvariantCulture);
+                l.SecondEnd = long.Parse(node.SelectSingleNode("SecondEnd").InnerText, CultureInfo.InvariantCulture);
+
+                result.Add(l);
             }
 
             return result;

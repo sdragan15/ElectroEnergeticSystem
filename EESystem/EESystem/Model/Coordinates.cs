@@ -10,5 +10,12 @@ namespace EESystem.Model
     {
         public double X { get; set; }
         public double Y { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is Coordinates coordinates &&
+                   X == coordinates.X &&
+                   Y == coordinates.Y;
+        }
     }
 }

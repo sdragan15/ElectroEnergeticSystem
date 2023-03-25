@@ -33,8 +33,9 @@ namespace WpfPanAndZoom.CustomControls
         private Color _backgroundColor = Colors.White;
         private List<Line> _gridLines = new List<Line>();
 
-        private double strokeThicknes = 0.2;
-        private int strokeGap = 2;
+        private double strokeThicknes = 0.5;
+        private int strokeGap = 5;
+        private bool drawLines = false;
 
 
         #endregion
@@ -51,39 +52,43 @@ namespace WpfPanAndZoom.CustomControls
             BackgroundColor = _backgroundColor;
 
             // draw lines
-            for (int x = -4000; x <= 4000; x += strokeGap)
+            if (drawLines)
             {
-                Line verticalLine = new Line
+                for (int x = -4000; x <= 4000; x += strokeGap)
                 {
-                    Stroke = new SolidColorBrush(_lineColor),
-                    X1 = x,
-                    Y1 = -4000,
-                    X2 = x,
-                    Y2 = 4000
-                };
+                    Line verticalLine = new Line
+                    {
+                        Stroke = new SolidColorBrush(_lineColor),
+                        X1 = x,
+                        Y1 = -4000,
+                        X2 = x,
+                        Y2 = 4000
+                    };
 
-                verticalLine.StrokeThickness = strokeThicknes;
+                    verticalLine.StrokeThickness = strokeThicknes;
 
-                Children.Add(verticalLine);
-                _gridLines.Add(verticalLine);
-            }
+                    Children.Add(verticalLine);
+                    _gridLines.Add(verticalLine);
+                }
 
-            for (int y = -4000; y <= 4000; y += strokeGap)
-            {
-                Line horizontalLine = new Line
+                for (int y = -4000; y <= 4000; y += strokeGap)
                 {
-                    Stroke = new SolidColorBrush(_lineColor),
-                    X1 = -4000,
-                    Y1 = y,
-                    X2 = 4000,
-                    Y2 = y
-                };
+                    Line horizontalLine = new Line
+                    {
+                        Stroke = new SolidColorBrush(_lineColor),
+                        X1 = -4000,
+                        Y1 = y,
+                        X2 = 4000,
+                        Y2 = y
+                    };
 
-                horizontalLine.StrokeThickness = strokeThicknes;
+                    horizontalLine.StrokeThickness = strokeThicknes;
 
-                Children.Add(horizontalLine);
-                _gridLines.Add(horizontalLine);
+                    Children.Add(horizontalLine);
+                    _gridLines.Add(horizontalLine);
+                }
             }
+            
         }
 
         public float Zoomfactor { get; set; } = 1.1f;

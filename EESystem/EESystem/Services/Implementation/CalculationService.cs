@@ -2,6 +2,7 @@
 using EESystem.Services.Interface;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,13 +11,16 @@ namespace EESystem.Services.Implementation
 {
     public class CalculationService : ICalculationService
     {
+        private int count = 0;
         private readonly int _resolution;
         private readonly double _substationWidth = 5;
         private readonly double _nodeWidth = 1;
 
-        public CalculationService(int resolution)
+        public CalculationService(int resolution, double substationWidth, double nodeWidth)
         {
             _resolution = resolution;
+            _substationWidth = substationWidth;
+            _nodeWidth = nodeWidth;
         }
 
         /// <summary>
@@ -172,7 +176,7 @@ namespace EESystem.Services.Implementation
                 double x = item.X;
                 double y = item.Y;
 
-                item.X = Math.Floor(x / _resolution) * _resolution - _substationWidth/2;
+                item.X = Math.Floor(x / _resolution) * _resolution - _substationWidth / 2;
                 item.Y = Math.Floor(y / _resolution) * _resolution - _substationWidth / 2;
 
                 if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), item))
@@ -189,6 +193,32 @@ namespace EESystem.Services.Implementation
             }
 
             return result;
+        }
+
+        public Dictionary<long, long> SetNodePairs(List<NodeEntity> nodes, List<LineEntity> lines)
+        {
+            var result = new Dictionary<long, long>();
+
+            foreach (var line in lines)
+            {
+                var firstNode = nodes.Where(x => x.Id == line.FirstEnd).FirstOrDefault();
+                var secondNode = nodes.Where(x => x.Id == line.SecondEnd).FirstOrDefault();
+
+                if (firstNode != null && secondNode != null)
+                {
+                    if(!result.ContainsKey(firstNode.Id) && !result.ContainsKey(secondNode.Id))
+                    {
+                        result.Add(firstNode.Id, secondNode.Id);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private bool LineContains(List<LineEntity> lines, NodeEntity node)
+        {
+            return lines.Where(x => x.FirstEnd == node.Id || x.SecondEnd == node.Id).FirstOrDefault() != null;
         }
 
         /// <summary>
@@ -243,6 +273,176 @@ namespace EESystem.Services.Implementation
         private bool ContainsCoord(List<PowerEntity> entities, PowerEntity entity)
         {
             return entities.Where(x => x.X == entity.X && x.Y == entity.Y).FirstOrDefault() != null ? true : false;
+        }
+
+        public List<Coordinates> CalculateEdgeCoords(int[,] matrix, Coordinates start, Coordinates end)
+        {
+            double startX = start.X;
+            double startY = start.Y;
+
+            Dictionary<Coordinates, Coordinates> path = new Dictionary<Coordinates, Coordinates>();
+            Queue<Coordinates> edges = new Queue<Coordinates>();
+
+            int tempX = (int)Math.Floor((start.X + _nodeWidth / 2) / _resolution);
+            int tempY = (int)Math.Floor((start.Y + _nodeWidth / 2) / _resolution);
+
+            end.X = (int)Math.Floor((end.X + _nodeWidth / 2) / _resolution);
+            end.Y = (int)Math.Floor((end.Y + _nodeWidth / 2) / _resolution);
+
+            edges.Enqueue(new Coordinates()
+            {
+                X = tempX,
+                Y = tempY
+            });
+
+            var points = new List<Coordinates>();
+
+           
+
+            BfsAlgorithm(matrix, edges, path, end);
+
+            if (path.Keys.FirstOrDefault(x => x.X == end.X && x.Y == end.Y) != null)
+            {
+                var temp = end;
+                points.Add(new Coordinates()
+                {
+                    X = (temp.X) * _resolution,
+                    Y = (temp.Y) * _resolution
+                });
+                matrix[(int)temp.X, (int)temp.Y] = 2;
+
+                while (true)
+                {
+                    temp = path[path.Keys.FirstOrDefault(x => x.X == temp.X && x.Y == temp.Y)];
+                    points.Add(new Coordinates()
+                    {
+                        X = (temp.X) * _resolution,
+                        Y = (temp.Y) * _resolution
+                    });
+
+                    matrix[(int)temp.X, (int)temp.Y] = 2;
+
+                    if (path.Keys.FirstOrDefault(x => x.X == temp.X && x.Y == temp.Y) == null)
+                        break;
+
+                    if (temp.X == tempX && temp.Y == tempY)
+                        break;
+                }
+            }
+
+
+            for(int i=0; i<300; i++)
+            {
+                for(int j=0; j<240; j++)
+                {
+                    if(matrix[i,j] != 2)
+                        matrix[i,j] = 0;
+                }
+            }
+
+
+            count = 0;
+            return points;
+        }
+
+        private void BfsAlgorithm(int[,] matrix, Queue<Coordinates> edges, Dictionary<Coordinates, Coordinates> path, Coordinates end)
+        {
+            count++;
+            if (count > 4000)
+                return;
+            //printMatrix(matrix);
+
+            Coordinates edge;
+            if (edges.Count() > 0)
+                edge = edges.Dequeue();
+            else
+                return;
+
+            int tempX = (int)edge.X;
+            int tempY = (int)edge.Y;
+
+            if(tempX < 0 || tempY < 0)
+                return;
+
+            if (edge.X == end.X && edge.Y == end.Y)
+            {
+                matrix[tempX, tempY] = 1;
+                var newEdge = new Coordinates()
+                {
+                    X = tempX,
+                    Y = tempY
+                };
+                path[newEdge] = edge;
+                edges.Enqueue(newEdge);
+                return;
+            }
+
+            if (tempX < 300 && matrix[tempX + 1, tempY] == 0)
+            {
+                matrix[tempX + 1, tempY] = 1;
+                var newEdge = new Coordinates()
+                {
+                    X = tempX + 1,
+                    Y = tempY
+                };
+                path[newEdge] = edge;
+                edges.Enqueue(newEdge);
+            }
+
+            if (tempY < 240 && matrix[tempX, tempY + 1] == 0)
+            {
+                matrix[tempX, tempY + 1] = 1;
+                var newEdge = new Coordinates()
+                {
+                    X = tempX,
+                    Y = tempY + 1
+                };
+                path[newEdge] = edge;
+                edges.Enqueue(newEdge);
+            }
+
+            if (tempX > 0 && matrix[tempX - 1, tempY] == 0)
+            {
+                matrix[tempX - 1, tempY] = 1;
+                var newEdge = new Coordinates()
+                {
+                    X = tempX - 1,
+                    Y = tempY
+                };
+                path[newEdge] = edge;
+                edges.Enqueue(newEdge);
+            }
+
+            if (tempY > 0 && matrix[tempX, tempY - 1] == 0)
+            {
+                matrix[tempX, tempY - 1] = 1;
+                var newEdge = new Coordinates()
+                {
+                    X = tempX,
+                    Y = tempY - 1
+                };
+                path[newEdge] = edge;
+                edges.Enqueue(newEdge);
+            }
+
+            BfsAlgorithm(matrix, edges, path, end);
+            
+            return;
+        }
+
+        private void printMatrix(int[,] matrix)
+        {
+            using (StreamWriter writer = new StreamWriter("matrix.txt"))
+            {
+                for (int i = 0; i < 300; i++)
+                {
+                    writer.WriteLine();
+                    for (int j = 0; j < 240; j++)
+                    {
+                        writer.Write(matrix[i, j]);
+                    }
+                }
+            }
         }
     }
 }

@@ -12,5 +12,6 @@ namespace EESystem.Services.Interface
     {
         public List<SubstationEntity> LoadSubstationNetwork();
         public List<NodeEntity> LoadNodesNetwork();
+        public List<LineEntity> LoadLinesNetwork();
     }
 }

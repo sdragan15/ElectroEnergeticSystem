@@ -13,5 +13,7 @@ namespace EESystem.Services.Interface
         public void CalculateCanvasCoords(double x, double y, out double newX, out double newY);
         public List<SubstationEntity> CalculateSubstaionCoordByResolution(List<SubstationEntity> substations);
         public List<NodeEntity> CalculateNodesCoordByResolution(List<NodeEntity> nodes);
+        public Dictionary<long, long> SetNodePairs(List<NodeEntity> nodes, List<LineEntity> lines);
+        public List<Coordinates> CalculateEdgeCoords(int[,] matrix, Coordinates start, Coordinates end);
     }
 }
