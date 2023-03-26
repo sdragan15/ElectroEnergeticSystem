@@ -51,7 +51,8 @@ namespace EESystem
             InitializeComponent();
             LoadSubstations();
             LoadNodes();
-            ConnectNodes();
+            ConnectNodesBFS();
+            //ConnectNodes();
         }
 
         private void LoadSubstations()
@@ -108,7 +109,7 @@ namespace EESystem
             }
         }
 
-        private void ConnectNodes()
+        private void ConnectNodesBFS()
         {
             int count = 0;
             foreach(var pair in nodePairs)
@@ -117,8 +118,24 @@ namespace EESystem
                 
                 var startNode = nodes.FirstOrDefault(x => x.Id == pair.Key);
                 var endNode = nodes.FirstOrDefault(x => x.Id == pair.Value);
-                var tempLines = _calcService.CalculateEdgeCoords(Matrix, new Coordinates() { X = startNode.X, Y = startNode.Y },
+                var tempLines = _calcService.CalculateEdgeCoordsBFS(Matrix, new Coordinates() { X = startNode.X, Y = startNode.Y },
                     new Coordinates() { X = endNode.X, Y = endNode.Y });
+
+                DrawConnection(tempLines);
+            }
+        }
+
+        private void ConnectNodes()
+        {
+            int count = 0;
+            foreach (var pair in nodePairs)
+            {
+                count++;
+
+                var startNode = nodes.FirstOrDefault(x => x.Id == pair.Key);
+                var endNode = nodes.FirstOrDefault(x => x.Id == pair.Value);
+                var tempLines = _calcService.CalculateEdgeCoords(new Coordinates() { X = startNode.X, Y = startNode.Y}, 
+                    new Coordinates() { X = endNode.X, Y = endNode.Y});
 
                 DrawConnection(tempLines);
             }

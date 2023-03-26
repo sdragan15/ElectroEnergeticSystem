@@ -15,12 +15,16 @@ namespace EESystem.Services.Implementation
         private readonly int _resolution;
         private readonly double _substationWidth = 5;
         private readonly double _nodeWidth = 1;
+        private double maxWidth;
+        private double maxHeight;
 
         public CalculationService(int resolution, double substationWidth, double nodeWidth)
         {
             _resolution = resolution;
             _substationWidth = substationWidth;
             _nodeWidth = nodeWidth;
+            maxWidth = 1200 / _resolution;
+            maxHeight = 800 / _resolution;
         }
 
         /// <summary>
@@ -275,7 +279,7 @@ namespace EESystem.Services.Implementation
             return entities.Where(x => x.X == entity.X && x.Y == entity.Y).FirstOrDefault() != null ? true : false;
         }
 
-        public List<Coordinates> CalculateEdgeCoords(int[,] matrix, Coordinates start, Coordinates end)
+        public List<Coordinates> CalculateEdgeCoordsBFS(int[,] matrix, Coordinates start, Coordinates end)
         {
             double startX = start.X;
             double startY = start.Y;
@@ -350,7 +354,13 @@ namespace EESystem.Services.Implementation
             count++;
             if (count > 4000)
                 return;
+
+            //if(count > 4000)
+            //{
+            //    printMatrix(matrix);
+            //}
             //printMatrix(matrix);
+
 
             Coordinates edge;
             if (edges.Count() > 0)
@@ -361,7 +371,7 @@ namespace EESystem.Services.Implementation
             int tempX = (int)edge.X;
             int tempY = (int)edge.Y;
 
-            if(tempX < 0 || tempY < 0)
+            if (tempX < 0 || tempY < 0)
                 return;
 
             if (edge.X == end.X && edge.Y == end.Y)
@@ -434,15 +444,54 @@ namespace EESystem.Services.Implementation
         {
             using (StreamWriter writer = new StreamWriter("matrix.txt"))
             {
-                for (int i = 0; i < 300; i++)
+                for (int i = 0; i < maxWidth; i++)
                 {
                     writer.WriteLine();
-                    for (int j = 0; j < 240; j++)
+                    for (int j = 0; j < maxHeight; j++)
                     {
                         writer.Write(matrix[i, j]);
                     }
                 }
             }
+        }
+
+        public List<Coordinates> CalculateEdgeCoords(Coordinates start, Coordinates end)
+        {
+            var result = new List<Coordinates>();
+
+            var tempX = start.X;
+            var tempY = start.Y;
+
+            result.Add(new Coordinates()
+            {
+                X = tempX + _nodeWidth/2,
+                Y = tempY + _nodeWidth/2
+            });
+
+            if (tempX != end.X)
+            {
+                result.Add(new Coordinates()
+                {
+                    X = end.X + _nodeWidth / 2,
+                    Y = start.Y + _nodeWidth / 2
+                });
+            }
+            else if(tempY != end.Y)
+            {
+                result.Add(new Coordinates()
+                {
+                    X = tempX + _nodeWidth / 2,
+                    Y = end.Y + _nodeWidth / 2
+                });
+            }
+
+            result.Add(new Coordinates()
+            {
+                X = end.X + _nodeWidth / 2,
+                Y = end.Y + _nodeWidth / 2
+            });
+
+            return result;
         }
     }
 }
