@@ -38,8 +38,8 @@ namespace EESystem.Services.Implementation
         {
             //newY = (x - 45.19) * 2000;
             //newX = Math.Abs(y - 19.95) * 2000;
-            newX = (x - 19.74) * (1 / (19.95 - 19.74));     // 19.95 je max latituda, 19.74 min.
-            newY = Math.Abs((y - 45.329) * (1 / (45.329 - 45.19)));     // Formula eksperimentalno izvucena
+            newX = (x - 19.70) * (1 / (19.98 - 19.70));     // 19.98 je max latituda, 19.74 min.
+            newY = Math.Abs((y - 45.329) * (1 / (45.349 - 45.19)));     // Formula eksperimentalno izvucena
         }
 
         public List<NodeEntity> CalculateNodesCoordByResolution(List<NodeEntity> nodes)
@@ -290,8 +290,10 @@ namespace EESystem.Services.Implementation
             int tempX = (int)Math.Floor((start.X + _nodeWidth / 2) / _resolution);
             int tempY = (int)Math.Floor((start.Y + _nodeWidth / 2) / _resolution);
 
-            end.X = (int)Math.Floor((end.X + _nodeWidth / 2) / _resolution);
-            end.Y = (int)Math.Floor((end.Y + _nodeWidth / 2) / _resolution);
+            var tempEnd = new Coordinates();
+
+            tempEnd.X = (int)Math.Floor((end.X + _nodeWidth / 2) / _resolution);
+            tempEnd.Y = (int)Math.Floor((end.Y + _nodeWidth / 2) / _resolution);
 
             edges.Enqueue(new Coordinates()
             {
@@ -303,11 +305,11 @@ namespace EESystem.Services.Implementation
 
            
 
-            BfsAlgorithm(matrix, edges, path, end);
+            BfsAlgorithm(matrix, edges, path, tempEnd);
 
-            if (path.Keys.FirstOrDefault(x => x.X == end.X && x.Y == end.Y) != null)
+            if (path.Keys.FirstOrDefault(x => x.X == tempEnd.X && x.Y == tempEnd.Y) != null)
             {
-                var temp = end;
+                var temp = tempEnd;
                 points.Add(new Coordinates()
                 {
                     X = (temp.X) * _resolution,
@@ -333,6 +335,28 @@ namespace EESystem.Services.Implementation
                         break;
                 }
             }
+            else
+            {
+                points = CalculateEdgeCoords(new Coordinates(start.X, start.Y), new Coordinates(end.X, end.Y));
+                var valid = true;
+                foreach(var point in points)
+                {
+                    tempX = (int)Math.Floor((point.X + _nodeWidth / 2) / _resolution);
+                    tempY = (int)Math.Floor((point.Y + _nodeWidth / 2) / _resolution);
+
+                    if(tempX < 0 || tempY < 0 || tempX > 300 || tempY > 240)
+                    {
+                        valid = false;
+                        break;
+                    }
+                    matrix[tempX, tempY] = 2;
+                }
+
+                if (!valid)
+                {
+                    points = new List<Coordinates>();
+                }
+            }
 
 
             for(int i=0; i<300; i++)
@@ -351,93 +375,93 @@ namespace EESystem.Services.Implementation
 
         private void BfsAlgorithm(int[,] matrix, Queue<Coordinates> edges, Dictionary<Coordinates, Coordinates> path, Coordinates end)
         {
-            count++;
-            if (count > 4000)
-                return;
-
-            //if(count > 4000)
-            //{
-            //    printMatrix(matrix);
-            //}
-            //printMatrix(matrix);
-
-
-            Coordinates edge;
-            if (edges.Count() > 0)
-                edge = edges.Dequeue();
-            else
-                return;
-
-            int tempX = (int)edge.X;
-            int tempY = (int)edge.Y;
-
-            if (tempX < 0 || tempY < 0)
-                return;
-
-            if (edge.X == end.X && edge.Y == end.Y)
+            while (true)
             {
-                matrix[tempX, tempY] = 1;
-                var newEdge = new Coordinates()
-                {
-                    X = tempX,
-                    Y = tempY
-                };
-                path[newEdge] = edge;
-                edges.Enqueue(newEdge);
-                return;
-            }
+                count++;
+                //if (count > 7000)
+                //    return;
 
-            if (tempX < 300 && matrix[tempX + 1, tempY] == 0)
-            {
-                matrix[tempX + 1, tempY] = 1;
-                var newEdge = new Coordinates()
-                {
-                    X = tempX + 1,
-                    Y = tempY
-                };
-                path[newEdge] = edge;
-                edges.Enqueue(newEdge);
-            }
+                //if(count > 4000)
+                //{
+                //    printMatrix(matrix);
+                //}
+                //printMatrix(matrix);
 
-            if (tempY < 240 && matrix[tempX, tempY + 1] == 0)
-            {
-                matrix[tempX, tempY + 1] = 1;
-                var newEdge = new Coordinates()
-                {
-                    X = tempX,
-                    Y = tempY + 1
-                };
-                path[newEdge] = edge;
-                edges.Enqueue(newEdge);
-            }
 
-            if (tempX > 0 && matrix[tempX - 1, tempY] == 0)
-            {
-                matrix[tempX - 1, tempY] = 1;
-                var newEdge = new Coordinates()
-                {
-                    X = tempX - 1,
-                    Y = tempY
-                };
-                path[newEdge] = edge;
-                edges.Enqueue(newEdge);
-            }
+                Coordinates edge;
+                if (edges.Count() > 0)
+                    edge = edges.Dequeue();
+                else
+                    return;
 
-            if (tempY > 0 && matrix[tempX, tempY - 1] == 0)
-            {
-                matrix[tempX, tempY - 1] = 1;
-                var newEdge = new Coordinates()
-                {
-                    X = tempX,
-                    Y = tempY - 1
-                };
-                path[newEdge] = edge;
-                edges.Enqueue(newEdge);
-            }
+                int tempX = (int)edge.X;
+                int tempY = (int)edge.Y;
 
-            BfsAlgorithm(matrix, edges, path, end);
+                if (tempX - 1 < 0 || tempY - 1 < 0 || tempX + 1 > 300 || tempY + 1 > 240)
+                    continue;
+
+                if (edge.X == end.X && edge.Y == end.Y)
+                {
+                    matrix[tempX, tempY] = 1;
+                    var newEdge = new Coordinates()
+                    {
+                        X = tempX,
+                        Y = tempY
+                    };
+                    path[newEdge] = edge;
+                    edges.Enqueue(newEdge);
+                    return;
+                }
+
+                if (tempX < 300 && matrix[tempX + 1, tempY] == 0)
+                {
+                    matrix[tempX + 1, tempY] = 1;
+                    var newEdge = new Coordinates()
+                    {
+                        X = tempX + 1,
+                        Y = tempY
+                    };
+                    path[newEdge] = edge;
+                    edges.Enqueue(newEdge);
+                }
+
+                if (tempY < 240 && matrix[tempX, tempY + 1] == 0)
+                {
+                    matrix[tempX, tempY + 1] = 1;
+                    var newEdge = new Coordinates()
+                    {
+                        X = tempX,
+                        Y = tempY + 1
+                    };
+                    path[newEdge] = edge;
+                    edges.Enqueue(newEdge);
+                }
+
+                if (tempX > 0 && matrix[tempX - 1, tempY] == 0)
+                {
+                    matrix[tempX - 1, tempY] = 1;
+                    var newEdge = new Coordinates()
+                    {
+                        X = tempX - 1,
+                        Y = tempY
+                    };
+                    path[newEdge] = edge;
+                    edges.Enqueue(newEdge);
+                }
+
+                if (tempY > 0 && matrix[tempX, tempY - 1] == 0)
+                {
+                    matrix[tempX, tempY - 1] = 1;
+                    var newEdge = new Coordinates()
+                    {
+                        X = tempX,
+                        Y = tempY - 1
+                    };
+                    path[newEdge] = edge;
+                    edges.Enqueue(newEdge);
+                }
+            }
             
-            return;
         }
 
         private void printMatrix(int[,] matrix)

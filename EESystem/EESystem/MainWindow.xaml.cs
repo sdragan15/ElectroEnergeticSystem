@@ -37,7 +37,7 @@ namespace EESystem
         private const int matrixWidth = 1500;
         private const int matrixHeight = 1200;
 
-        private int[,] Matrix = new int[matrixWidth/resolution, matrixHeight/resolution];
+        private int[,] Matrix = new int[matrixWidth/resolution + 1, matrixHeight/resolution + 1];
         private Dictionary<long, long> nodePairs = new Dictionary<long, long>();
         List<SubstationEntity> substations = new List<SubstationEntity>();
         List<NodeEntity> nodes = new List<NodeEntity>();
