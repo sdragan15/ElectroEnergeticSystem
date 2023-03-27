@@ -2,6 +2,7 @@
 using EESystem.Services.Interface;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -303,7 +304,6 @@ namespace EESystem.Services.Implementation
 
             var points = new List<Coordinates>();
 
-           
 
             BfsAlgorithm(matrix, edges, path, tempEnd);
 

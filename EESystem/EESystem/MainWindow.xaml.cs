@@ -3,7 +3,9 @@ using EESystem.Services.Implementation;
 using EESystem.Services.Interface;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -67,6 +69,12 @@ namespace EESystem
                 ellipse.Width = substationWidth;
                 ellipse.Height = substationWidth;
                 ellipse.Fill = new SolidColorBrush(Colors.Red);
+                
+                var tt = new ToolTip();
+                tt.Content = $"Name: {item.Name}\nID: {item.Id}";
+                
+                ellipse.ToolTip = tt;
+
 
                 CanvasArea.Children.Add(ellipse);
 
@@ -111,6 +119,10 @@ namespace EESystem
 
         private void ConnectNodesBFS()
         {
+            Stopwatch stopwatch = new Stopwatch();
+            Stopwatch drawintTime = new Stopwatch();
+            var times = new List<long>();
+
             int count = 0;
             foreach(var pair in nodePairs)
             {
@@ -118,10 +130,29 @@ namespace EESystem
                 
                 var startNode = nodes.FirstOrDefault(x => x.Id == pair.Key);
                 var endNode = nodes.FirstOrDefault(x => x.Id == pair.Value);
+
+                stopwatch.Start();
                 var tempLines = _calcService.CalculateEdgeCoordsBFS(Matrix, new Coordinates() { X = startNode.X, Y = startNode.Y },
                     new Coordinates() { X = endNode.X, Y = endNode.Y });
-
+                stopwatch.Stop();
+                
+                drawintTime.Start();
                 DrawConnection(tempLines);
+                drawintTime.Stop();
+            }
+
+            times.Add(stopwatch.ElapsedMilliseconds);
+            times.Add(drawintTime.ElapsedMilliseconds);
+            //PrintTimes(times);
+        }
+
+        private void PrintTimes(List<long> times)
+        {
+            using (StreamWriter writer = File.AppendText("times.txt"))
+            {
+                writer.WriteLine("-------------------------------------");
+                writer.WriteLine($"Calculation time:\t {times[0]}");
+                writer.WriteLine($"Drawing time:\t\t {times[1]}");
             }
         }
 
