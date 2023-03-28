@@ -14,8 +14,9 @@ namespace EESystem.Services.Implementation
     {
         private int count = 0;
         private readonly int _resolution;
-        private readonly double _substationWidth = 5;
-        private readonly double _nodeWidth = 1;
+        private readonly double _substationWidth = 10;
+        private readonly double _nodeWidth = 3;
+        private readonly double _switchWidth = 4;
         private double maxWidth;
         private double maxHeight;
 
@@ -514,6 +515,127 @@ namespace EESystem.Services.Implementation
                 X = end.X + _nodeWidth / 2,
                 Y = end.Y + _nodeWidth / 2
             });
+
+            return result;
+        }
+
+        public List<SwitchEntity> CalculateSwitchesCoordByResolution(List<SwitchEntity> switches)
+        {
+            var result = new List<SwitchEntity>();
+
+            foreach (var item in switches)
+            {
+                double tempX = item.X;
+                double tempY = item.Y;
+
+                double coordX = Math.Floor(tempX / _resolution);
+                double coordY = Math.Floor(tempY / _resolution);
+                item.X = Math.Floor(tempX / _resolution) * _resolution - _switchWidth / 2;
+                item.Y = Math.Floor(tempY / _resolution) * _resolution - _switchWidth / 2;
+
+                if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), item))
+                {
+                    result.Add(item);
+                    continue;
+                }
+
+                int radius = 0;
+                bool added = false;
+                while (radius <= 5)
+                {
+                    radius++;
+
+                    tempX = coordX - radius;
+                    tempY = coordY - radius;
+                    for (int i = 0; i <= radius * 2; i++)
+                    {
+                        tempX += i;
+
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _switchWidth / 2,
+                            Y = tempY * _resolution - _switchWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                    tempX = coordX + radius;
+                    tempY = coordY - radius;
+                    for (int i = 0; i <= radius * 2; i++)
+                    {
+                        tempY += i;
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _switchWidth / 2,
+                            Y = tempY * _resolution - _switchWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                    tempX = coordX + radius;
+                    tempY = coordY + radius;
+                    for (int i = 0; i <= radius * 2; i++)
+                    {
+                        tempX -= i;
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _switchWidth / 2,
+                            Y = tempY * _resolution - _switchWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                    tempX = coordX - radius;
+                    tempY = coordY + radius;
+                    for (int i = 0; i <= radius * 2; i++)
+                    {
+                        tempY -= i;
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _switchWidth / 2,
+                            Y = tempY * _resolution - _switchWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                }
+            }
 
             return result;
         }

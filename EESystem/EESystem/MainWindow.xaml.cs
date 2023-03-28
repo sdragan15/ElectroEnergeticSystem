@@ -34,16 +34,22 @@ namespace EESystem
         private ICalculationService _calcService;
         private double nodesWidth = 3;
         private double substationWidth = 10;
+        private double switchWidth = 4;
+
         private const int resolution = 5;
         private double connectionThickness = 1;
         private const int matrixWidth = 1500;
         private const int matrixHeight = 1200;
+
+        private bool switchesShowed = false;
+    
 
         private int[,] Matrix = new int[matrixWidth/resolution + 1, matrixHeight/resolution + 1];
         private Dictionary<long, long> nodePairs = new Dictionary<long, long>();
         List<SubstationEntity> substations = new List<SubstationEntity>();
         List<NodeEntity> nodes = new List<NodeEntity>();
         List<LineEntity> lines = new List<LineEntity>();
+        List<SwitchEntity> switches = new List<SwitchEntity>();
 
         public MainWindow()
         {
@@ -52,9 +58,11 @@ namespace EESystem
 
             InitializeComponent();
             LoadSubstations();
+            LoadSwitches();
             LoadNodes();
             ConnectNodesBFS();
             //ConnectNodes();
+
         }
 
         private void LoadSubstations()
@@ -68,10 +76,10 @@ namespace EESystem
                 Ellipse ellipse = new Ellipse();
                 ellipse.Width = substationWidth;
                 ellipse.Height = substationWidth;
-                ellipse.Fill = new SolidColorBrush(Colors.Red);
+                ellipse.Fill = new SolidColorBrush(Colors.Blue);
                 
                 var tt = new ToolTip();
-                tt.Content = $"Name: {item.Name}\nID: {item.Id}";
+                tt.Content = $"Substation\nName: {item.Name}\nID: {item.Id}";
                 
                 ellipse.ToolTip = tt;
 
@@ -80,6 +88,35 @@ namespace EESystem
 
                 Canvas.SetLeft(ellipse, item.X);
                 Canvas.SetTop(ellipse, item.Y);
+            }
+        }
+
+        private void LoadSwitches()
+        {
+            switchesShowed = true;
+
+            switches = _fileService.LoadSwitchesNetwork();
+            switches = _calcService.CalculateSwitchesCoordByResolution(switches);
+
+            foreach(SwitchEntity item in switches)
+            {
+                Ellipse ellipse = new Ellipse();
+                ellipse.Width = switchWidth;
+                ellipse.Height = switchWidth/3;
+                if(item.Status.Equals("Closed"))
+                    ellipse.Fill = new SolidColorBrush(Colors.Red);
+                else
+                    ellipse.Fill = new SolidColorBrush(Colors.Green);
+
+                var tt = new ToolTip();
+                tt.Content = $"Switch\nName: {item.Name}\nID: {item.Id}\n{item.Status}";
+
+                ellipse.ToolTip= tt;
+                ellipse.Uid = "switch_" + Guid.NewGuid().ToString();
+
+                CanvasArea.Children.Add(ellipse);
+                Canvas.SetLeft(ellipse, item.X);
+                Canvas.SetTop(ellipse, item.Y - 0.5);
             }
         }
 
@@ -188,6 +225,31 @@ namespace EESystem
             connection.Stroke = new SolidColorBrush(Colors.Black);
             connection.StrokeThickness = connectionThickness;
             CanvasArea.Children.Add(connection);
+        }
+
+        private void ToggleSwitches(object sender, RoutedEventArgs e)
+        {
+            if (switchesShowed)
+            {
+                List<UIElement> itemstoremove = new List<UIElement>();
+                foreach (UIElement ui in CanvasArea.Children)
+                {
+                    if (ui.Uid.StartsWith("switch"))
+                    {
+                        itemstoremove.Add(ui);
+                    }
+                }
+                foreach (UIElement ui in itemstoremove)
+                {
+                    CanvasArea.Children.Remove(ui);
+                }
+                switchesShowed = false;
+            }
+            else
+            {
+                LoadSwitches();
+            }
+
         }
     }
 }

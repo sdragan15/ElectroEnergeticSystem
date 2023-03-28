@@ -110,5 +110,36 @@ namespace EESystem.Services.Implementation
 
             return result;
         }
+
+        public List<SwitchEntity> LoadSwitchesNetwork()
+        {
+            XmlNodeList nodeList;
+
+            var result = new List<SwitchEntity>();
+
+            double noviX, noviY;
+            double canvasX, canvasY;
+
+            nodeList = xmlDoc.DocumentElement.SelectNodes("/NetworkModel/Switches/SwitchEntity");
+            foreach (XmlNode node in nodeList)
+            {
+                SwitchEntity switchobj = new SwitchEntity();
+                switchobj.Id = long.Parse(node.SelectSingleNode("Id").InnerText, CultureInfo.InvariantCulture);
+                switchobj.Name = node.SelectSingleNode("Name").InnerText;
+                switchobj.X = double.Parse(node.SelectSingleNode("X").InnerText, CultureInfo.InvariantCulture);
+                switchobj.Y = double.Parse(node.SelectSingleNode("Y").InnerText, CultureInfo.InvariantCulture);
+                switchobj.Status = node.SelectSingleNode("Status").InnerText;
+
+                _calculationService.ToLatLon(switchobj.X, switchobj.Y, 34, out noviY, out noviX);
+
+                _calculationService.CalculateCanvasCoords(noviX, noviY, out canvasX, out canvasY);
+                switchobj.X = canvasX * _canvasWidth;
+                switchobj.Y = canvasY * _canvasHeight;
+
+                result.Add(switchobj);
+            }
+
+            return result;
+        }
     }
 }
