@@ -17,5 +17,6 @@ namespace EESystem.Services.Interface
         public Dictionary<long, long> SetNodePairs(List<NodeEntity> nodes, List<LineEntity> lines);
         public List<Coordinates> CalculateEdgeCoordsBFS(int[,] matrix, Coordinates start, Coordinates end);
         public List<Coordinates> CalculateEdgeCoords(Coordinates start, Coordinates end);
+        public List<Coordinates> GetInersections();
     }
 }

@@ -16,6 +16,7 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
@@ -42,6 +43,9 @@ namespace EESystem
         private const int matrixHeight = 1200;
 
         private bool switchesShowed = false;
+
+        private List<List<Coordinates>> allPaths = new List<List<Coordinates>>();
+        private List<Coordinates> intersections = new List<Coordinates>();
     
 
         private int[,] Matrix = new int[matrixWidth/resolution + 1, matrixHeight/resolution + 1];
@@ -61,6 +65,7 @@ namespace EESystem
             LoadSwitches();
             LoadNodes();
             ConnectNodesBFS();
+            GetIntersections();
             //ConnectNodes();
 
         }
@@ -154,6 +159,48 @@ namespace EESystem
             }
         }
 
+        private void GetIntersections()
+        {
+            intersections = _calcService.GetInersections();
+            List<Coordinates> deleteCords = new List<Coordinates>();
+            foreach(var item in intersections)
+            {
+                if(nodes.FirstOrDefault(x => x.X + nodesWidth/2 == item.X && x.Y + nodesWidth / 2 == item.Y) != null)
+                {
+                    deleteCords.Add(item);
+                }
+            }
+
+            intersections = intersections.Except(deleteCords).ToList();
+
+            DrawIntersections();
+        }
+
+        private void DrawIntersections()
+        {
+            foreach (Coordinates item in intersections)
+            {
+                Line line = new Line();
+                line.X1 = item.X + 3.5;
+                line.Y1 = item.Y + 3.5;
+                line.X2 = item.X - 3.5;
+                line.Y2 = item.Y - 3.5;
+                line.StrokeThickness = 0.5;
+                line.Stroke = new SolidColorBrush(Colors.Black);
+
+                Line line2 = new Line();
+                line2.X1 = item.X + 3.5;
+                line2.Y1 = item.Y - 3.5;
+                line2.X2 = item.X - 3.5;
+                line2.Y2 = item.Y + 3.5;
+                line2.StrokeThickness = 0.5;
+                line2.Stroke = new SolidColorBrush(Colors.Black);
+
+                CanvasArea.Children.Add(line);
+                CanvasArea.Children.Add(line2);
+            }
+        }
+
         private void ConnectNodesBFS()
         {
             Stopwatch stopwatch = new Stopwatch();
@@ -172,6 +219,9 @@ namespace EESystem
                 var tempLines = _calcService.CalculateEdgeCoordsBFS(Matrix, new Coordinates() { X = startNode.X, Y = startNode.Y },
                     new Coordinates() { X = endNode.X, Y = endNode.Y });
                 stopwatch.Stop();
+
+                if(tempLines.Count() > 0)
+                    allPaths.Add(tempLines);
                 
                 drawintTime.Start();
                 DrawConnection(tempLines);
@@ -224,7 +274,26 @@ namespace EESystem
             connection.Points = collection;
             connection.Stroke = new SolidColorBrush(Colors.Black);
             connection.StrokeThickness = connectionThickness;
+            connection.MouseDown += ConnectionClick;
             CanvasArea.Children.Add(connection);
+        }
+
+        private void ConnectionClick(object sender, RoutedEventArgs e)
+        {
+            Polyline line = (Polyline)sender;
+            DoubleAnimation animation = new DoubleAnimation();
+            animation.From = 3;
+            animation.To = 10;
+            animation.Duration = new Duration(TimeSpan.FromMilliseconds(3000));
+
+            DoubleAnimation da = new DoubleAnimation();
+            da.From = 0;
+            da.To = 2;
+            da.Duration = new Duration(TimeSpan.FromSeconds(3));
+            da.RepeatBehavior = RepeatBehavior.Forever;
+            ScaleTransform scale = new ScaleTransform();
+            line.RenderTransform = scale;
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, da);
         }
 
         private void ToggleSwitches(object sender, RoutedEventArgs e)

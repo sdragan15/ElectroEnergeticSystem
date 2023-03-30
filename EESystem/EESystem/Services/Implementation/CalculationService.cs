@@ -20,6 +20,10 @@ namespace EESystem.Services.Implementation
         private double maxWidth;
         private double maxHeight;
 
+        private List<Coordinates> intersection = new List<Coordinates>();
+
+        private List<List<Coordinates>> allPaths = new List<List<Coordinates>>();
+
         public CalculationService(int resolution, double substationWidth, double nodeWidth)
         {
             _resolution = resolution;
@@ -29,13 +33,7 @@ namespace EESystem.Services.Implementation
             maxHeight = 800 / _resolution;
         }
 
-        /// <summary>
-        /// Maps latitude and longitude to range [0, 1]
-        /// </summary>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
-        /// <param name="newX"></param>
-        /// <param name="newY"></param>
+
         public void CalculateCanvasCoords(double x, double y, out double newX, out double newY)
         {
             //newY = (x - 45.19) * 2000;
@@ -165,14 +163,7 @@ namespace EESystem.Services.Implementation
             return result;
         }
 
-        /// <summary>
-        /// Calculated coordinates by resolution, if coordinates is same it moves to the first free coords
-        /// </summary>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
-        /// <param name="newX"></param>
-        /// <param name="newY"></param>
-        /// <exception cref="NotImplementedException"></exception>
+        
         public List<SubstationEntity> CalculateSubstaionCoordByResolution(List<SubstationEntity> substations)
         {
             var result = new List<SubstationEntity>();
@@ -227,14 +218,7 @@ namespace EESystem.Services.Implementation
             return lines.Where(x => x.FirstEnd == node.Id || x.SecondEnd == node.Id).FirstOrDefault() != null;
         }
 
-        /// <summary>
-        /// Transform coords into latitude and longitude
-        /// </summary>
-        /// <param name="utmX"></param>
-        /// <param name="utmY"></param>
-        /// <param name="zoneUTM"></param>
-        /// <param name="latitude"></param>
-        /// <param name="longitude"></param>
+
         public void ToLatLon(double utmX, double utmY, int zoneUTM, out double latitude, out double longitude)
         {
             bool isNorthHemisphere = true;
@@ -335,15 +319,70 @@ namespace EESystem.Services.Implementation
                     if (temp.X == tempX && temp.Y == tempY)
                         break;
                 }
+
+                allPaths.Add(points);
             }
             else
             {
                 points = CalculateEdgeCoords(new Coordinates(start.X, start.Y), new Coordinates(end.X, end.Y));
                 var valid = true;
-                foreach(var point in points)
+                for(int i=0; i<points.Count(); i++)
                 {
-                    tempX = (int)Math.Floor((point.X + _nodeWidth / 2) / _resolution);
-                    tempY = (int)Math.Floor((point.Y + _nodeWidth / 2) / _resolution);
+                    tempX = (int)Math.Floor((points[i].X + _nodeWidth / 2) / _resolution);
+                    tempY = (int)Math.Floor((points[i].Y + _nodeWidth / 2) / _resolution);
+
+                    bool top = false;
+                    bool left = false;
+                    bool right = false;
+                    bool bottom = false;
+
+                    bool topSec = false;
+                    bool leftSec = false;
+                    bool rightSec = false;
+                    bool bottomSec = false;
+
+                    if (matrix[tempX, tempY] == 2 && i > 0 && i < points.Count() - 1)
+                    {
+                        for (int k = -1; k <= 1; k += 2)
+                        {
+                            if (points[i + k].X == points[i].X && points[i + k].Y > points[i].Y)
+                                bottom = true;
+                            if (points[i + k].X == points[i].X && points[i + k].Y < points[i].Y)
+                                top = true;
+                            if (points[i + k].X < points[i].X && points[i + k].Y == points[i].Y)
+                                left = true;
+                            if (points[i + k].X > points[i].X && points[i + k].Y == points[i].Y)
+                                right = true;
+                        }
+
+                        foreach (var item in allPaths)
+                        {
+                            var coord = item.FirstOrDefault(x => x.X == points[i].X && x.Y == points[i].Y);
+                            if (coord != null)
+                            {
+                                var id = item.IndexOf(coord);
+                                if(id > 0 && id < item.Count() - 1)
+                                {
+                                    for (int k = -1; k <= 1; k += 2)
+                                    {
+                                        if (item[id + k].X == item[id].X && item[id + k].Y > item[id].Y)
+                                            bottomSec = true;
+                                        if (item[id + k].X == item[id].X && item[id + k].Y < item[id].Y)
+                                            topSec = true;
+                                        if (item[id + k].X < item[id].X && item[id + k].Y == item[id].Y)
+                                            leftSec = true;
+                                        if (item[id + k].X > item[id].X && item[id + k].Y == item[id].Y)
+                                            rightSec = true;
+                                    }
+
+                                    if (top ^ topSec && right ^ rightSec && left ^ leftSec && bottom ^ bottomSec)
+                                    {
+                                        intersection.Add(new Coordinates(item[id].X, item[id].Y));
+                                    }
+                                }
+                            }                            
+                        }
+                    }
 
                     if(tempX < 0 || tempY < 0 || tempX > 300 || tempY > 240)
                     {
@@ -357,6 +396,9 @@ namespace EESystem.Services.Implementation
                 {
                     points = new List<Coordinates>();
                 }
+
+                if(points.Count > 0)
+                    allPaths.Add(points);
             }
 
 
@@ -493,28 +535,59 @@ namespace EESystem.Services.Implementation
                 Y = tempY + _nodeWidth/2
             });
 
-            if (tempX != end.X)
+            for(int i=0; i<=1; i++)
             {
-                result.Add(new Coordinates()
+                double coordX = tempX;
+                double coordY = tempY;
+
+                if (tempX != end.X)
                 {
-                    X = end.X + _nodeWidth / 2,
-                    Y = start.Y + _nodeWidth / 2
-                });
-            }
-            else if(tempY != end.Y)
-            {
+                    coordX = tempX;
+                    coordY = tempY;
+                    while (coordX != end.X)
+                    {
+                        result.Add(new Coordinates()
+                        {
+                            X = coordX + _nodeWidth / 2,
+                            Y = coordY + _nodeWidth / 2
+                        });
+
+                        if (coordX < end.X)
+                            coordX++;
+                        else
+                            coordX--;
+                    }
+
+                }
+                else if (tempY != end.Y)
+                {
+                    coordX = tempX;
+                    coordY = tempY;
+                    while (coordY != end.Y)
+                    {
+                        result.Add(new Coordinates()
+                        {
+                            X = coordX + _nodeWidth / 2,
+                            Y = coordY + _nodeWidth / 2
+                        });
+
+                        if (coordY < end.Y)
+                            coordY++;
+                        else
+                            coordY--;
+                    }
+
+                }
+
+                tempX = coordX;
+                tempY = coordY;
+
                 result.Add(new Coordinates()
                 {
                     X = tempX + _nodeWidth / 2,
-                    Y = end.Y + _nodeWidth / 2
+                    Y = tempY + _nodeWidth / 2
                 });
             }
-
-            result.Add(new Coordinates()
-            {
-                X = end.X + _nodeWidth / 2,
-                Y = end.Y + _nodeWidth / 2
-            });
 
             return result;
         }
@@ -638,6 +711,11 @@ namespace EESystem.Services.Implementation
             }
 
             return result;
+        }
+
+        public List<Coordinates> GetInersections()
+        {
+            return intersection;
         }
     }
 }
