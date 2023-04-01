@@ -14,11 +14,14 @@ namespace EESystem.Services.Implementation
     {
         private int count = 0;
         private readonly int _resolution;
-        private readonly double _substationWidth = 10;
+        private readonly double _substationWidth = 3;
         private readonly double _nodeWidth = 3;
-        private readonly double _switchWidth = 4;
+        private readonly double _switchWidth = 3;
         private double maxWidth;
         private double maxHeight;
+
+        private Stopwatch stopwatch = new Stopwatch();
+        private Stopwatch stopwatch2 = new Stopwatch();
 
         private List<Coordinates> intersection = new List<Coordinates>();
 
@@ -64,7 +67,7 @@ namespace EESystem.Services.Implementation
 
                 int radius = 0;
                 bool added = false;
-                while (radius <= 5)
+                while (radius <= 100)
                 {
                     radius++;
 
@@ -166,27 +169,145 @@ namespace EESystem.Services.Implementation
         
         public List<SubstationEntity> CalculateSubstaionCoordByResolution(List<SubstationEntity> substations)
         {
+            //var result = new List<SubstationEntity>();
+
+            //foreach(var item in substations)
+            //{
+            //    double x = item.X;
+            //    double y = item.Y;
+
+            //    item.X = Math.Floor(x / _resolution) * _resolution - _substationWidth / 2;
+            //    item.Y = Math.Floor(y / _resolution) * _resolution - _substationWidth / 2;
+
+            //    if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), item))
+            //    {
+            //        result.Add(item);
+            //        continue;
+            //    }
+
+            //    int radius = 1;
+            //    //while (true)
+            //    //{
+
+            //    //}
+            //}
+
+            //return result;
+
             var result = new List<SubstationEntity>();
 
-            foreach(var item in substations)
+            foreach (var item in substations)
             {
-                double x = item.X;
-                double y = item.Y;
+                double tempX = item.X;
+                double tempY = item.Y;
 
-                item.X = Math.Floor(x / _resolution) * _resolution - _substationWidth / 2;
-                item.Y = Math.Floor(y / _resolution) * _resolution - _substationWidth / 2;
+                double coordX = Math.Floor(tempX / _resolution);
+                double coordY = Math.Floor(tempY / _resolution);
+                item.X = Math.Floor(tempX / _resolution) * _resolution - _nodeWidth / 2;
+                item.Y = Math.Floor(tempY / _resolution) * _resolution - _nodeWidth / 2;
 
                 if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), item))
                 {
                     result.Add(item);
                     continue;
                 }
-                    
-                int radius = 1;
-                //while (true)
-                //{
-                    
-                //}
+
+                int radius = 0;
+                bool added = false;
+                while (radius <= 100)
+                {
+                    radius++;
+
+                    tempX = coordX - radius;
+                    tempY = coordY - radius;
+                    for (int i = 0; i <= radius * 2; i++)
+                    {
+                        tempX += i;
+
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _nodeWidth / 2,
+                            Y = tempY * _resolution - _nodeWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                    tempX = coordX + radius;
+                    tempY = coordY - radius;
+                    for (int i = 0; i <= radius * 2; i++)
+                    {
+                        tempY += i;
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _nodeWidth / 2,
+                            Y = tempY * _resolution - _nodeWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                    tempX = coordX + radius;
+                    tempY = coordY + radius;
+                    for (int i = 0; i <= radius * 2; i++)
+                    {
+                        tempX -= i;
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _nodeWidth / 2,
+                            Y = tempY * _resolution - _nodeWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                    tempX = coordX - radius;
+                    tempY = coordY + radius;
+                    for (int i = 0; i <= radius * 2; i++)
+                    {
+                        tempY -= i;
+                        var coord = new PowerEntity()
+                        {
+                            X = tempX * _resolution - _nodeWidth / 2,
+                            Y = tempY * _resolution - _nodeWidth / 2
+                        };
+
+                        if (!ContainsCoord(result.Cast<PowerEntity>().ToList(), coord))
+                        {
+                            item.X = coord.X;
+                            item.Y = coord.Y;
+                            result.Add(item);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) break;
+
+                }
             }
 
             return result;
@@ -265,7 +386,7 @@ namespace EESystem.Services.Implementation
             return entities.Where(x => x.X == entity.X && x.Y == entity.Y).FirstOrDefault() != null ? true : false;
         }
 
-        public List<Coordinates> CalculateEdgeCoordsBFS(int[,] matrix, Coordinates start, Coordinates end)
+        public List<Coordinates> CalculateEdgeCoordsBFS(int[,] matrix, Coordinates start, Coordinates end, double width)
         {
             double startX = start.X;
             double startY = start.Y;
@@ -273,13 +394,13 @@ namespace EESystem.Services.Implementation
             Dictionary<Coordinates, Coordinates> path = new Dictionary<Coordinates, Coordinates>();
             Queue<Coordinates> edges = new Queue<Coordinates>();
 
-            int tempX = (int)Math.Floor((start.X + _nodeWidth / 2) / _resolution);
-            int tempY = (int)Math.Floor((start.Y + _nodeWidth / 2) / _resolution);
+            int tempX = (int)Math.Floor((start.X + width / 2) / _resolution);
+            int tempY = (int)Math.Floor((start.Y + width / 2) / _resolution);
 
             var tempEnd = new Coordinates();
 
-            tempEnd.X = (int)Math.Floor((end.X + _nodeWidth / 2) / _resolution);
-            tempEnd.Y = (int)Math.Floor((end.Y + _nodeWidth / 2) / _resolution);
+            tempEnd.X = (int)Math.Floor((end.X + width / 2) / _resolution);
+            tempEnd.Y = (int)Math.Floor((end.Y + width / 2) / _resolution);
 
             edges.Enqueue(new Coordinates()
             {
@@ -289,8 +410,9 @@ namespace EESystem.Services.Implementation
 
             var points = new List<Coordinates>();
 
-
+            stopwatch.Start();
             BfsAlgorithm(matrix, edges, path, tempEnd);
+            stopwatch.Stop();
 
             if (path.Keys.FirstOrDefault(x => x.X == tempEnd.X && x.Y == tempEnd.Y) != null)
             {
@@ -325,11 +447,12 @@ namespace EESystem.Services.Implementation
             else
             {
                 points = CalculateEdgeCoords(new Coordinates(start.X, start.Y), new Coordinates(end.X, end.Y));
+
                 var valid = true;
                 for(int i=0; i<points.Count(); i++)
                 {
-                    tempX = (int)Math.Floor((points[i].X + _nodeWidth / 2) / _resolution);
-                    tempY = (int)Math.Floor((points[i].Y + _nodeWidth / 2) / _resolution);
+                    tempX = (int)Math.Floor((points[i].X + width / 2) / _resolution);
+                    tempY = (int)Math.Floor((points[i].Y + width / 2) / _resolution);
 
                     bool top = false;
                     bool left = false;
@@ -343,6 +466,7 @@ namespace EESystem.Services.Implementation
 
                     if (matrix[tempX, tempY] == 2 && i > 0 && i < points.Count() - 1)
                     {
+
                         for (int k = -1; k <= 1; k += 2)
                         {
                             if (points[i + k].X == points[i].X && points[i + k].Y > points[i].Y)
@@ -355,9 +479,11 @@ namespace EESystem.Services.Implementation
                                 right = true;
                         }
 
-                        foreach (var item in allPaths)
+                        var newPaths = allPaths.Where(x => x.Contains(points[i])).ToList();
+                        foreach (var item in newPaths)
                         {
                             var coord = item.FirstOrDefault(x => x.X == points[i].X && x.Y == points[i].Y);
+                            
                             if (coord != null)
                             {
                                 var id = item.IndexOf(coord);
@@ -392,6 +518,8 @@ namespace EESystem.Services.Implementation
                     matrix[tempX, tempY] = 2;
                 }
 
+                
+
                 if (!valid)
                 {
                     points = new List<Coordinates>();
@@ -400,7 +528,6 @@ namespace EESystem.Services.Implementation
                 if(points.Count > 0)
                     allPaths.Add(points);
             }
-
 
             for(int i=0; i<300; i++)
             {
@@ -418,10 +545,11 @@ namespace EESystem.Services.Implementation
 
         private void BfsAlgorithm(int[,] matrix, Queue<Coordinates> edges, Dictionary<Coordinates, Coordinates> path, Coordinates end)
         {
+            count = 0;
             while (true)
             {
                 count++;
-                //if (count > 7000)
+                //if (count > 100)
                 //    return;
 
                 //if(count > 4000)
@@ -614,7 +742,7 @@ namespace EESystem.Services.Implementation
 
                 int radius = 0;
                 bool added = false;
-                while (radius <= 5)
+                while (radius <= 100)
                 {
                     radius++;
 
@@ -716,6 +844,38 @@ namespace EESystem.Services.Implementation
         public List<Coordinates> GetInersections()
         {
             return intersection;
+        }
+
+        public Dictionary<long, long> SetSwitchesPairs(List<SwitchEntity> switches, List<LineEntity> lines)
+        {
+            var result = new Dictionary<long, long>();
+
+            foreach (var line in lines)
+            {
+                var firstNode = switches.Where(x => x.Id == line.FirstEnd).FirstOrDefault();
+                var secondNode = switches.Where(x => x.Id == line.SecondEnd).FirstOrDefault();
+
+                if (firstNode != null && secondNode != null)
+                {
+                    if (!result.ContainsKey(firstNode.Id) && !result.ContainsKey(secondNode.Id))
+                    {
+                        result.Add(firstNode.Id, secondNode.Id);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        public long GetElapsedTime(int type)
+        {
+            switch (type)
+            {
+                case 0: return stopwatch.ElapsedMilliseconds;
+                case 1: return stopwatch2.ElapsedMilliseconds;
+                default: return 0;
+            }
+            
         }
     }
 }

@@ -96,14 +96,27 @@ namespace EESystem.Services.Implementation
         public List<LineEntity> LoadLinesNetwork()
         {
             var result = new List<LineEntity>();
-            XmlNodeList nodeList;
+            XmlNodeList lineList;
 
-            nodeList = xmlDoc.DocumentElement.SelectNodes("/NetworkModel/Lines/LineEntity");
-            foreach (XmlNode node in nodeList)
+            lineList = xmlDoc.DocumentElement.SelectNodes("/NetworkModel/Lines/LineEntity");
+            foreach (XmlNode line in lineList)
             {
                 LineEntity l = new LineEntity();
-                l.FirstEnd = long.Parse(node.SelectSingleNode("FirstEnd").InnerText, CultureInfo.InvariantCulture);
-                l.SecondEnd = long.Parse(node.SelectSingleNode("SecondEnd").InnerText, CultureInfo.InvariantCulture);
+                l.FirstEnd = long.Parse(line.SelectSingleNode("FirstEnd").InnerText, CultureInfo.InvariantCulture);
+                l.SecondEnd = long.Parse(line.SelectSingleNode("SecondEnd").InnerText, CultureInfo.InvariantCulture);
+
+                //if(result.FirstOrDefault(x => x.FirstEnd == l.FirstEnd) != null && result.FirstOrDefault(x => x.SecondEnd == l.SecondEnd) != null)
+                //{
+                //    continue;
+                //}
+
+                //if (result.FirstOrDefault(x => x.FirstEnd == l.SecondEnd) != null && result.FirstOrDefault(x => x.SecondEnd == l.FirstEnd) != null)
+                //{
+                //    continue;
+                //}
+
+                //if (l.FirstEnd == l.SecondEnd)
+                //    continue;
 
                 result.Add(l);
             }

@@ -6,9 +6,16 @@
         xmlns:local="clr-namespace:EESystem"
         xmlns:CustomControls="clr-namespace:WpfPanAndZoom.CustomControls"
         mc:Ignorable="d"
+        xmlns:fa="http://schemas.fontawesome.io/icons/"
         Title="MainWindow" Height="800" Width="1200">
-    <DockPanel>
-        <!--<Button Panel.ZIndex="10" Height="40" Width="100" DockPanel.Dock="Top" Click="ToggleSwitches">Toggle Switches</Button>-->
-        <CustomControls:PanAndZoomCanvas x:Name="CanvasArea"/>
-    </DockPanel>
+
+    <Grid x:Name="MyGrid">
+        <DockPanel x:Name="Panel">
+            <Button Panel.ZIndex="10" Height="40" Width="100" DockPanel.Dock="Top" Click="Draw">Draw System</Button>
+            <CustomControls:PanAndZoomCanvas x:Name="CanvasArea"/>
+            <fa:ImageAwesome x:Name="LoadingIcon" Icon="Spinner" Spin="True" SpinDuration="2" Height="50" Width="50"/>
+        </DockPanel>
+        <MediaElement x:Name="LoadingElement" Source="../../../loading.mp4" Panel.ZIndex="200" Visibility="Visible" Stretch="Fill" LoadedBehavior="Play" Margin="-10,0,-1,0"/>
+    </Grid>
+
 </Window>

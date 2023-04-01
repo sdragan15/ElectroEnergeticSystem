@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VisibilityBinding;
 
-namespace EESystem.Model
+namespace EESystem.ViewModel
 {
-    public class NodeEntity : PowerEntity
+    public class MainViewModel : BaseViewModel
     {
-        public string Uid { get; set; }
     }
 }

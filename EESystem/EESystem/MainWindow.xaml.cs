@@ -3,42 +3,35 @@ using EESystem.Services.Implementation;
 using EESystem.Services.Interface;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Xml;
+
 
 namespace EESystem
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow
     {
         public double CanvasWidth = 1200;
         public double CanvasHeight = 800;
         private IFileService _fileService;
         private ICalculationService _calcService;
         private double nodesWidth = 3;
-        private double substationWidth = 10;
-        private double switchWidth = 4;
+        private double substationWidth = 3;
+        private double switchWidth = 3;
 
         private const int resolution = 5;
-        private double connectionThickness = 1;
+        private double connectionThickness = 0.5;
         private const int matrixWidth = 1500;
         private const int matrixHeight = 1200;
 
@@ -46,28 +39,107 @@ namespace EESystem
 
         private List<List<Coordinates>> allPaths = new List<List<Coordinates>>();
         private List<Coordinates> intersections = new List<Coordinates>();
-    
 
-        private int[,] Matrix = new int[matrixWidth/resolution + 1, matrixHeight/resolution + 1];
-        private Dictionary<long, long> nodePairs = new Dictionary<long, long>();
+        private Polyline activeLineAnim = null;
+        private Dictionary<Polyline, LinesEdges> lineNodePairs = new Dictionary<Polyline, LinesEdges>();
+
+
+        private int[,] Matrix = new int[matrixWidth / resolution + 1, matrixHeight / resolution + 1];
         List<SubstationEntity> substations = new List<SubstationEntity>();
         List<NodeEntity> nodes = new List<NodeEntity>();
         List<LineEntity> lines = new List<LineEntity>();
         List<SwitchEntity> switches = new List<SwitchEntity>();
+        List<List<Coordinates>> path = new List<List<Coordinates>>();
+
+        Thread bfsThread = null;
+        private bool showed = false;
+
 
         public MainWindow()
-        {
+        { 
             _calcService = new CalculationService(resolution, substationWidth, nodesWidth);
             _fileService = new FileService(_calcService, "Geographic.xml", CanvasWidth, CanvasHeight);
 
             InitializeComponent();
+
+            Thread loadingThread = new Thread(Loading);
+            loadingThread.Start();
+
+            LoadingIcon.Visibility = Visibility.Hidden;
+
+            LoadLines();
             LoadSubstations();
             LoadSwitches();
             LoadNodes();
-            ConnectNodesBFS();
-            GetIntersections();
-            //ConnectNodes();
 
+            bfsThread = ConnectEntitiesBFS();
+            bfsThread.Start();
+
+        }
+
+        private void Loading()
+        {
+            Thread.Sleep(12000);
+            Dispatcher.Invoke(() =>
+            {
+                MyGrid.Children.Remove(LoadingElement);
+            });
+        }
+
+        private void Draw(object sender, RoutedEventArgs e)
+        {
+            if (!showed)
+            {
+                LoadingIcon.Visibility= Visibility.Visible;
+
+                Thread thread = new Thread(new ThreadStart(Draw));
+                thread.Start();
+                showed = true;
+            }
+        }
+
+        private void Draw()
+        {
+            bfsThread.Join();
+            
+            Dispatcher.Invoke(() =>
+            {
+                DrawSubstations();
+                DrawNodes();
+                DrawSwitches();
+                DrawPath();
+
+                GetIntersections();
+                Panel.Children.Remove(LoadingIcon);
+            });
+          
+        }
+
+        private void LoadLines()
+        {
+            lines = _fileService.LoadLinesNetwork();
+        }
+
+        private void DrawSubstations()
+        {
+            foreach (SubstationEntity item in substations)
+            {
+                Ellipse ellipse = new Ellipse();
+                ellipse.Width = substationWidth;
+                ellipse.Height = substationWidth;
+                ellipse.Fill = new SolidColorBrush(Colors.Blue);
+
+                var tt = new ToolTip();
+                tt.Content = $"Substation\nName: {item.Name}\nID: {item.Id}";
+
+                ellipse.ToolTip = tt;
+
+
+                CanvasArea.Children.Add(ellipse);
+
+                Canvas.SetLeft(ellipse, item.X);
+                Canvas.SetTop(ellipse, item.Y);
+            }
         }
 
         private void LoadSubstations()
@@ -75,22 +147,27 @@ namespace EESystem
             substations = _fileService.LoadSubstationNetwork();
 
             substations = _calcService.CalculateSubstaionCoordByResolution(substations);
+        }
 
-            foreach(SubstationEntity item in substations)
+        private void DrawSwitches()
+        {
+            foreach (SwitchEntity item in switches)
             {
                 Ellipse ellipse = new Ellipse();
-                ellipse.Width = substationWidth;
-                ellipse.Height = substationWidth;
-                ellipse.Fill = new SolidColorBrush(Colors.Blue);
-                
-                var tt = new ToolTip();
-                tt.Content = $"Substation\nName: {item.Name}\nID: {item.Id}";
-                
-                ellipse.ToolTip = tt;
+                ellipse.Width = switchWidth;
+                ellipse.Height = switchWidth;
+                if (item.Status.Equals("Closed"))
+                    ellipse.Fill = new SolidColorBrush(Colors.Red);
+                else
+                    ellipse.Fill = new SolidColorBrush(Colors.Green);
 
+                var tt = new ToolTip();
+                tt.Content = $"Switch\nName: {item.Name}\nID: {item.Id}\n{item.Status}";
+
+                ellipse.ToolTip = tt;
+                ellipse.Uid = "switch_" + Guid.NewGuid().ToString();
 
                 CanvasArea.Children.Add(ellipse);
-
                 Canvas.SetLeft(ellipse, item.X);
                 Canvas.SetTop(ellipse, item.Y);
             }
@@ -103,53 +180,29 @@ namespace EESystem
             switches = _fileService.LoadSwitchesNetwork();
             switches = _calcService.CalculateSwitchesCoordByResolution(switches);
 
-            foreach(SwitchEntity item in switches)
+            var removeLines = new List<SwitchEntity>();
+            foreach (var item in switches)
             {
-                Ellipse ellipse = new Ellipse();
-                ellipse.Width = switchWidth;
-                ellipse.Height = switchWidth/3;
-                if(item.Status.Equals("Closed"))
-                    ellipse.Fill = new SolidColorBrush(Colors.Red);
-                else
-                    ellipse.Fill = new SolidColorBrush(Colors.Green);
-
-                var tt = new ToolTip();
-                tt.Content = $"Switch\nName: {item.Name}\nID: {item.Id}\n{item.Status}";
-
-                ellipse.ToolTip= tt;
-                ellipse.Uid = "switch_" + Guid.NewGuid().ToString();
-
-                CanvasArea.Children.Add(ellipse);
-                Canvas.SetLeft(ellipse, item.X);
-                Canvas.SetTop(ellipse, item.Y - 0.5);
-            }
-        }
-
-        private void LoadNodes()
-        {
-            nodes = _fileService.LoadNodesNetwork();
-            lines = _fileService.LoadLinesNetwork();
-            nodePairs = _calcService.SetNodePairs(nodes, lines);
-
-            var removeNodes = new List<NodeEntity>();
-            foreach(var node in nodes)
-            {
-                if(!nodePairs.ContainsKey(node.Id) && !nodePairs.ContainsValue(node.Id))
+                if (lines.FirstOrDefault(x => x.FirstEnd == item.Id) == null && lines.FirstOrDefault(x => x.SecondEnd == item.Id) == null)
                 {
-                    removeNodes.Add(node);
+                    removeLines.Add(item);
                 }
             }
 
-            nodes = nodes.Except(removeNodes).ToList();
+            switches = switches.Except(removeLines).ToList();
 
-            nodes = _calcService.CalculateNodesCoordByResolution(nodes);
+        }
 
-            foreach(var node in nodes)
+        private void DrawNodes()
+        {
+            foreach (var node in nodes)
             {
                 Ellipse ellipse = new Ellipse();
                 ellipse.Width = nodesWidth;
                 ellipse.Height = nodesWidth;
                 ellipse.Fill = new SolidColorBrush(Colors.Black);
+                ellipse.Uid = Guid.NewGuid().ToString();
+                node.Uid = ellipse.Uid;
 
                 CanvasArea.Children.Add(ellipse);
 
@@ -159,13 +212,31 @@ namespace EESystem
             }
         }
 
+        private void LoadNodes()
+        {
+            nodes = _fileService.LoadNodesNetwork();
+
+            var removeNodes = new List<NodeEntity>();
+            foreach (var node in nodes)
+            {
+                if (lines.FirstOrDefault(x => x.FirstEnd == node.Id) == null && lines.FirstOrDefault(x => x.SecondEnd == node.Id) == null)
+                {
+                    removeNodes.Add(node);
+                }
+            }
+
+            nodes = nodes.Except(removeNodes).ToList();
+
+            nodes = _calcService.CalculateNodesCoordByResolution(nodes);
+        }
+
         private void GetIntersections()
         {
             intersections = _calcService.GetInersections();
             List<Coordinates> deleteCords = new List<Coordinates>();
-            foreach(var item in intersections)
+            foreach (var item in intersections)
             {
-                if(nodes.FirstOrDefault(x => x.X + nodesWidth/2 == item.X && x.Y + nodesWidth / 2 == item.Y) != null)
+                if (nodes.FirstOrDefault(x => x.X + nodesWidth / 2 == item.X && x.Y + nodesWidth / 2 == item.Y) != null)
                 {
                     deleteCords.Add(item);
                 }
@@ -201,37 +272,83 @@ namespace EESystem
             }
         }
 
-        private void ConnectNodesBFS()
+        private PowerEntity GetEntity(long id)
         {
-            Stopwatch stopwatch = new Stopwatch();
-            Stopwatch drawintTime = new Stopwatch();
-            var times = new List<long>();
+            PowerEntity entity = switches.FirstOrDefault(x => x.Id == id);
+            if (entity != null)
+                return entity;
 
-            int count = 0;
-            foreach(var pair in nodePairs)
-            {
-                count++;
-                
-                var startNode = nodes.FirstOrDefault(x => x.Id == pair.Key);
-                var endNode = nodes.FirstOrDefault(x => x.Id == pair.Value);
+            entity = nodes.FirstOrDefault(x => x.Id == id);
+            if (entity != null)
+                return entity;
 
-                stopwatch.Start();
-                var tempLines = _calcService.CalculateEdgeCoordsBFS(Matrix, new Coordinates() { X = startNode.X, Y = startNode.Y },
-                    new Coordinates() { X = endNode.X, Y = endNode.Y });
-                stopwatch.Stop();
+            entity = substations.FirstOrDefault(x => x.Id == id);
+            if (entity != null)
+                return entity;
 
-                if(tempLines.Count() > 0)
-                    allPaths.Add(tempLines);
-                
-                drawintTime.Start();
-                DrawConnection(tempLines);
-                drawintTime.Stop();
-            }
-
-            times.Add(stopwatch.ElapsedMilliseconds);
-            times.Add(drawintTime.ElapsedMilliseconds);
-            //PrintTimes(times);
+            return null;
         }
+
+        private Thread ConnectEntitiesBFS()
+        {
+            Thread thread = new Thread(new ThreadStart(async () =>
+            {
+                int skipCount = 0;
+                int zeroPath = 0;
+                Stopwatch stopwatch = new Stopwatch();
+                Stopwatch drawintTime = new Stopwatch();
+                var times = new List<long>();
+
+                int count = 0;
+                foreach (var line in lines)
+                {
+                    count++;
+                    //if (count > 59)
+                    //    return;
+
+                    PowerEntity startNode = GetEntity(line.FirstEnd);
+
+                    PowerEntity endNode = GetEntity(line.SecondEnd);
+
+                    if (startNode == null || endNode == null)
+                    {
+                        skipCount++;
+                        continue;
+                    }
+
+                    stopwatch.Start();
+                    var tempLines = _calcService.CalculateEdgeCoordsBFS(Matrix, new Coordinates() { X = startNode.X, Y = startNode.Y },
+                        new Coordinates() { X = endNode.X, Y = endNode.Y }, switchWidth);
+                    stopwatch.Stop();
+
+                    if (tempLines.Count() > 0)
+                        allPaths.Add(tempLines);
+                    else
+                    {
+                        zeroPath++;
+                    }
+
+                    path.Add(tempLines);
+
+                    times = new List<long>();
+                }
+
+                var bfsTime = _calcService.GetElapsedTime(0);
+                var otherTime = _calcService.GetElapsedTime(1);
+                var time = stopwatch.ElapsedMilliseconds;
+            }));
+
+            return thread;
+        }
+
+        private void DrawPath()
+        {
+            foreach(var item in path)
+            {
+                DrawConnection(item, switchWidth);
+            }
+        }
+
 
         private void PrintTimes(List<long> times)
         {
@@ -243,24 +360,13 @@ namespace EESystem
             }
         }
 
-        private void ConnectNodes()
+        private void DrawConnection(List<Coordinates> coords, double nodesWidth)
         {
-            int count = 0;
-            foreach (var pair in nodePairs)
+            if(coords.Count < 3)
             {
-                count++;
-
-                var startNode = nodes.FirstOrDefault(x => x.Id == pair.Key);
-                var endNode = nodes.FirstOrDefault(x => x.Id == pair.Value);
-                var tempLines = _calcService.CalculateEdgeCoords(new Coordinates() { X = startNode.X, Y = startNode.Y}, 
-                    new Coordinates() { X = endNode.X, Y = endNode.Y});
-
-                DrawConnection(tempLines);
+                return;
             }
-        }
 
-        private void DrawConnection(List<Coordinates> coords)
-        {
             Polyline connection = new Polyline();
             PointCollection collection = new PointCollection();
             foreach (var p in coords)
@@ -276,24 +382,95 @@ namespace EESystem
             connection.StrokeThickness = connectionThickness;
             connection.MouseDown += ConnectionClick;
             CanvasArea.Children.Add(connection);
+
+            var firstNode = nodes.FirstOrDefault(x => x.X + nodesWidth / 2 == coords[0].X && x.Y + nodesWidth / 2 == coords[0].Y);
+            var lastNode = nodes.FirstOrDefault(x => x.X + nodesWidth / 2 == coords[coords.Count() - 1].X && x.Y + nodesWidth / 2 == coords[coords.Count()-1].Y);
+
+            if(firstNode != null && lastNode != null)
+            {
+                lineNodePairs.Add(connection, new LinesEdges(firstNode, lastNode));
+            }
         }
 
         private void ConnectionClick(object sender, RoutedEventArgs e)
         {
+            if(activeLineAnim != null)
+            {
+                activeLineAnim.BeginAnimation(Line.StrokeThicknessProperty, null);
+                activeLineAnim.Stroke = new SolidColorBrush(Colors.Black);
+                activeLineAnim.StrokeThickness = connectionThickness;
+                activeLineAnim = null;
+            }
+
             Polyline line = (Polyline)sender;
-            DoubleAnimation animation = new DoubleAnimation();
-            animation.From = 3;
-            animation.To = 10;
-            animation.Duration = new Duration(TimeSpan.FromMilliseconds(3000));
+            line.Stroke = new SolidColorBrush(Colors.Blue);
+
+            Coordinates firstPoint = new Coordinates(line.Points[0].X, line.Points[0].Y);
+            Coordinates lastPoint = new Coordinates(line.Points[line.Points.Count() - 1].X, line.Points[line.Points.Count()-1].Y);
 
             DoubleAnimation da = new DoubleAnimation();
-            da.From = 0;
-            da.To = 2;
-            da.Duration = new Duration(TimeSpan.FromSeconds(3));
+            da.From = connectionThickness;
+            da.To = 3 * connectionThickness;
+            da.AutoReverse = true;
+            da.Duration = new Duration(TimeSpan.FromSeconds(1));
             da.RepeatBehavior = RepeatBehavior.Forever;
-            ScaleTransform scale = new ScaleTransform();
-            line.RenderTransform = scale;
-            scale.BeginAnimation(ScaleTransform.ScaleXProperty, da);
+
+            line.BeginAnimation(Line.StrokeThicknessProperty, da);
+            activeLineAnim = line;
+
+            var firstNode = nodes.FirstOrDefault(x => x.X + nodesWidth/2 == firstPoint.X && x.Y + nodesWidth / 2 == firstPoint.Y);
+            var lastNode = nodes.FirstOrDefault(x => x.X + nodesWidth / 2 == lastPoint.X && x.Y + nodesWidth / 2 == lastPoint.Y);
+
+            if(firstNode != null && lastNode != null)
+            {
+                DoubleAnimation nodeDa = new DoubleAnimation();
+                nodeDa.From = 1;
+                nodeDa.To = 3;
+                nodeDa.AutoReverse = true;
+                nodeDa.Duration = new Duration(TimeSpan.FromSeconds(1));
+                nodeDa.RepeatBehavior = RepeatBehavior.Forever;
+                var firstScale = new ScaleTransform();
+                var secondScale = new ScaleTransform();
+
+                
+
+                foreach(UIElement child in CanvasArea.Children)
+                {
+                    if(child.Uid == firstNode.Uid)
+                    {
+                        var position = child.TransformToAncestor(CanvasArea).Transform(new Point(0, 0));
+                        var scaleTransform = CanvasArea.canvas.RenderTransform as ScaleTransform;
+                        var scaledX = position.X / scaleTransform.ScaleX;
+                        var scaledY = position.Y / scaleTransform.ScaleY;
+                        firstScale.CenterX = scaledX - nodesWidth / 2;
+                        firstScale.CenterY = scaledY - nodesWidth / 2;
+
+                        child.RenderTransform = firstScale;
+                        firstScale.BeginAnimation(ScaleTransform.ScaleXProperty, nodeDa);
+                        firstScale.BeginAnimation(ScaleTransform.ScaleYProperty, nodeDa);
+                    }
+
+                    if (child.Uid == lastNode.Uid)
+                    {
+                        var position = child.TransformToAncestor(CanvasArea).Transform(new Point(0, 0));
+                        var scaleTransform = CanvasArea.canvas.RenderTransform as ScaleTransform;
+                        var scaledX = scaleTransform.ScaleX * position.X;
+                        var scaledY = scaleTransform.ScaleY * position.Y;
+                        secondScale.CenterX = scaledX - nodesWidth/2;
+                        secondScale.CenterY = scaledY - nodesWidth / 2;
+
+                        child.RenderTransform = secondScale;
+                        secondScale.BeginAnimation(ScaleTransform.ScaleXProperty, nodeDa);
+                        secondScale.BeginAnimation(ScaleTransform.ScaleYProperty, nodeDa);
+                    }
+                }
+
+                //firstScale.BeginAnimation(ScaleTransform.ScaleXProperty, nodeDa);
+                //firstScale.BeginAnimation(ScaleTransform.ScaleYProperty, nodeDa);
+
+                //secondScale.BeginAnimation(ScaleTransform.ScaleXProperty, nodeDa);
+                //secondScale.BeginAnimation(ScaleTransform.ScaleYProperty, nodeDa);
+            }
         }
 
         private void ToggleSwitches(object sender, RoutedEventArgs e)
@@ -320,5 +497,6 @@ namespace EESystem
             }
 
         }
+
     }
 }

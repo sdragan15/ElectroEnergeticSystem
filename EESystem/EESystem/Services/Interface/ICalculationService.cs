@@ -15,8 +15,10 @@ namespace EESystem.Services.Interface
         public List<NodeEntity> CalculateNodesCoordByResolution(List<NodeEntity> nodes);
         public List<SwitchEntity> CalculateSwitchesCoordByResolution(List<SwitchEntity> switches);
         public Dictionary<long, long> SetNodePairs(List<NodeEntity> nodes, List<LineEntity> lines);
-        public List<Coordinates> CalculateEdgeCoordsBFS(int[,] matrix, Coordinates start, Coordinates end);
+        public List<Coordinates> CalculateEdgeCoordsBFS(int[,] matrix, Coordinates start, Coordinates end, double width);
         public List<Coordinates> CalculateEdgeCoords(Coordinates start, Coordinates end);
         public List<Coordinates> GetInersections();
+        public Dictionary<long, long> SetSwitchesPairs(List<SwitchEntity> switches, List<LineEntity> lines);
+        public long GetElapsedTime(int type);
     }
 }

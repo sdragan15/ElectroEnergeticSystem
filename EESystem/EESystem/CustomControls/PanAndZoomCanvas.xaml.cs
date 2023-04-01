@@ -22,6 +22,12 @@ namespace WpfPanAndZoom.CustomControls
     public partial class PanAndZoomCanvas : Canvas
     {
         #region Variables
+
+        private Double zoomMax = 5;
+        private Double zoomMin = 0.5;
+        private Double zoomSpeed = 0.001;
+        private Double zoom = 1;
+
         private readonly MatrixTransform _transform = new MatrixTransform();
         private Point _initialMousePosition;
 
@@ -88,7 +94,7 @@ namespace WpfPanAndZoom.CustomControls
                     _gridLines.Add(horizontalLine);
                 }
             }
-            
+
         }
 
         public float Zoomfactor { get; set; } = 1.1f;
@@ -101,7 +107,7 @@ namespace WpfPanAndZoom.CustomControls
             {
                 _lineColor = value;
 
-                foreach( Line line in _gridLines )
+                foreach (Line line in _gridLines)
                 {
                     line.Stroke = new SolidColorBrush(_lineColor);
                 }
@@ -185,30 +191,19 @@ namespace WpfPanAndZoom.CustomControls
 
         private void PanAndZoomCanvas_MouseWheel(object sender, MouseWheelEventArgs e)
         {
-            float scaleFactor = Zoomfactor;
-            if (e.Delta < 0)
+            zoom += zoomSpeed * e.Delta; // Ajust zooming speed (e.Delta = Mouse spin value )
+            if (zoom < zoomMin) { zoom = zoomMin; } // Limit Min Scale
+            if (zoom > zoomMax) { zoom = zoomMax; } // Limit Max Scale
+
+            Point mousePos = e.GetPosition(canvas);
+
+            if (zoom > 1)
             {
-                scaleFactor = 1f / scaleFactor;
+                canvas.RenderTransform = new ScaleTransform(zoom, zoom, mousePos.X, mousePos.Y); // transform Canvas size from mouse position
             }
-
-            Point mousePostion = e.GetPosition(this);
-
-            Matrix scaleMatrix = _transform.Matrix;
-            scaleMatrix.ScaleAt(scaleFactor, scaleFactor, mousePostion.X, mousePostion.Y);
-            _transform.Matrix = scaleMatrix;
-
-            foreach (UIElement child in this.Children)
+            else
             {
-                double x = Canvas.GetLeft(child);
-                double y = Canvas.GetTop(child);
-
-                double sx = x * scaleFactor;
-                double sy = y * scaleFactor;
-
-                Canvas.SetLeft(child, sx);
-                Canvas.SetTop(child, sy);
-
-                child.RenderTransform = _transform;
+                canvas.RenderTransform = new ScaleTransform(zoom, zoom); // transform Canvas size
             }
         }
     }
