@@ -8,6 +8,5 @@ namespace EESystem.Model
 {
     public class NodeEntity : PowerEntity
     {
-        public string Uid { get; set; }
     }
 }

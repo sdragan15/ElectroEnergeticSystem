@@ -80,7 +80,7 @@ namespace EESystem.Services.Implementation
                 sub.Name = node.SelectSingleNode("Name").InnerText;
                 sub.X = double.Parse(node.SelectSingleNode("X").InnerText, CultureInfo.InvariantCulture);
                 sub.Y = double.Parse(node.SelectSingleNode("Y").InnerText, CultureInfo.InvariantCulture);
-
+                sub.Uid = Guid.NewGuid().ToString();
                 _calculationService.ToLatLon(sub.X, sub.Y, 34, out noviY, out noviX);
 
                 _calculationService.CalculateCanvasCoords(noviX, noviY, out canvasX, out canvasY);
@@ -148,7 +148,7 @@ namespace EESystem.Services.Implementation
                 _calculationService.CalculateCanvasCoords(noviX, noviY, out canvasX, out canvasY);
                 switchobj.X = canvasX * _canvasWidth;
                 switchobj.Y = canvasY * _canvasHeight;
-
+                switchobj.Uid = Guid.NewGuid().ToString();
                 result.Add(switchobj);
             }
 

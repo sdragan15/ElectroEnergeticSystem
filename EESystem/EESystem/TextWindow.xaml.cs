@@ -82,5 +82,11 @@ namespace EESystem
                 ErrorMsg.Visibility = Visibility.Visible;
             }
         }
+
+        public void SetValues(string text, double fontSize)
+        {
+            Text.Text = text;
+            FontSize.Text = fontSize.ToString();
+        }
     }
 }

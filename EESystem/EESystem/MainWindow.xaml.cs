@@ -55,6 +55,7 @@ namespace EESystem
         List<SwitchEntity> switches = new List<SwitchEntity>();
         List<List<Coordinates>> path = new List<List<Coordinates>>();
         List<UIGroupElement> uiGroupElements = new List<UIGroupElement>();
+        List<UIElement> animatedNodes = new List<UIElement>();
 
         public List<UIElement> DrawingElements = new List<UIElement>();
         public List<DrawingItem> PolygonPoints = new List<DrawingItem>();
@@ -98,7 +99,7 @@ namespace EESystem
 
         private void Loading()
         {
-            Thread.Sleep(2000);
+            Thread.Sleep(12000);
             Dispatcher.Invoke(() =>
             {
                 MyGrid.Children.Remove(LoadingElement);
@@ -147,7 +148,7 @@ namespace EESystem
                 ellipse.Width = substationWidth;
                 ellipse.Height = substationWidth;
                 ellipse.Fill = new SolidColorBrush(Colors.Blue);
-
+                ellipse.Uid = item.Uid;
                 var tt = new ToolTip();
                 tt.Content = $"Substation\nName: {item.Name}\nID: {item.Id}";
 
@@ -180,11 +181,11 @@ namespace EESystem
                 else
                     ellipse.Fill = new SolidColorBrush(Colors.Green);
 
+                ellipse.Uid = item.Uid;
                 var tt = new ToolTip();
                 tt.Content = $"Switch\nName: {item.Name}\nID: {item.Id}\n{item.Status}";
 
-                ellipse.ToolTip = tt;
-                ellipse.Uid = "switch_" + Guid.NewGuid().ToString();
+                ellipse.ToolTip = tt; 
 
                 CanvasArea.Children.Add(ellipse);
                 Canvas.SetLeft(ellipse, item.X);
@@ -222,6 +223,11 @@ namespace EESystem
                 ellipse.Fill = new SolidColorBrush(Colors.Black);
                 ellipse.Uid = Guid.NewGuid().ToString();
                 node.Uid = ellipse.Uid;
+
+                var tt = new ToolTip();
+                tt.Content = $"Node\nName: {node.Name}\nID: {node.Id}";
+
+                ellipse.ToolTip = tt;
 
                 CanvasArea.Children.Add(ellipse);
 
@@ -289,6 +295,24 @@ namespace EESystem
                 CanvasArea.Children.Add(line);
                 CanvasArea.Children.Add(line2);
             }
+        }
+
+        private PowerEntity GetEntityByCoords(Coordinates coord)
+        {
+            PowerEntity entity = null;
+            entity = switches.FirstOrDefault(x => x.X + nodesWidth / 2 == coord.X && x.Y + nodesWidth / 2 == coord.Y);
+            if (entity != null)
+                return entity;
+
+            entity = substations.FirstOrDefault(x => x.X + nodesWidth / 2 == coord.X && x.Y + nodesWidth / 2 == coord.Y);
+            if (entity != null)
+                return entity;
+
+            entity = nodes.FirstOrDefault(x => x.X + nodesWidth / 2 == coord.X && x.Y + nodesWidth / 2 == coord.Y);
+            if (entity != null)
+                return entity;
+
+            return null;
         }
 
         private PowerEntity GetEntity(long id)
@@ -429,7 +453,7 @@ namespace EESystem
 
             DoubleAnimation da = new DoubleAnimation();
             da.From = connectionThickness;
-            da.To = 3 * connectionThickness;
+            da.To = 5 * connectionThickness;
             da.AutoReverse = true;
             da.Duration = new Duration(TimeSpan.FromSeconds(1));
             da.RepeatBehavior = RepeatBehavior.Forever;
@@ -437,58 +461,34 @@ namespace EESystem
             line.BeginAnimation(Line.StrokeThicknessProperty, da);
             activeLineAnim = line;
 
-            var firstNode = nodes.FirstOrDefault(x => x.X + nodesWidth/2 == firstPoint.X && x.Y + nodesWidth / 2 == firstPoint.Y);
-            var lastNode = nodes.FirstOrDefault(x => x.X + nodesWidth / 2 == lastPoint.X && x.Y + nodesWidth / 2 == lastPoint.Y);
+            PowerEntity firstNode = GetEntityByCoords(firstPoint);
+            PowerEntity lastNode = GetEntityByCoords(lastPoint);
+
+            foreach (var item in animatedNodes)
+            {
+                item.BeginAnimation(Ellipse.WidthProperty, null);
+                item.BeginAnimation(Ellipse.HeightProperty, null);
+            }
 
             if(firstNode != null && lastNode != null)
             {
                 DoubleAnimation nodeDa = new DoubleAnimation();
-                nodeDa.From = 1;
-                nodeDa.To = 3;
+                nodeDa.From = nodesWidth;
+                nodeDa.To = 3 * nodesWidth;
                 nodeDa.AutoReverse = true;
                 nodeDa.Duration = new Duration(TimeSpan.FromSeconds(1));
                 nodeDa.RepeatBehavior = RepeatBehavior.Forever;
-                var firstScale = new ScaleTransform();
-                var secondScale = new ScaleTransform();
 
-                
-
-                foreach(UIElement child in CanvasArea.Children)
+                foreach (UIElement child in CanvasArea.Children)
                 {
-                    if(child.Uid == firstNode.Uid)
+                    if (child.Uid == firstNode.Uid || child.Uid == lastNode.Uid)
                     {
-                        var position = child.TransformToAncestor(CanvasArea).Transform(new Point(0, 0));
-                        var scaleTransform = CanvasArea.canvas.RenderTransform as ScaleTransform;
-                        var scaledX = position.X / scaleTransform.ScaleX;
-                        var scaledY = position.Y / scaleTransform.ScaleY;
-                        firstScale.CenterX = scaledX - nodesWidth / 2;
-                        firstScale.CenterY = scaledY - nodesWidth / 2;
-
-                        child.RenderTransform = firstScale;
-                        firstScale.BeginAnimation(ScaleTransform.ScaleXProperty, nodeDa);
-                        firstScale.BeginAnimation(ScaleTransform.ScaleYProperty, nodeDa);
+                        child.BeginAnimation(Ellipse.WidthProperty, nodeDa);
+                        child.BeginAnimation(Ellipse.HeightProperty, nodeDa);
+                        animatedNodes.Add(child);
                     }
 
-                    if (child.Uid == lastNode.Uid)
-                    {
-                        var position = child.TransformToAncestor(CanvasArea).Transform(new Point(0, 0));
-                        var scaleTransform = CanvasArea.canvas.RenderTransform as ScaleTransform;
-                        var scaledX = scaleTransform.ScaleX * position.X;
-                        var scaledY = scaleTransform.ScaleY * position.Y;
-                        secondScale.CenterX = scaledX - nodesWidth/2;
-                        secondScale.CenterY = scaledY - nodesWidth / 2;
-
-                        child.RenderTransform = secondScale;
-                        secondScale.BeginAnimation(ScaleTransform.ScaleXProperty, nodeDa);
-                        secondScale.BeginAnimation(ScaleTransform.ScaleYProperty, nodeDa);
-                    }
                 }
-
-                //firstScale.BeginAnimation(ScaleTransform.ScaleXProperty, nodeDa);
-                //firstScale.BeginAnimation(ScaleTransform.ScaleYProperty, nodeDa);
-
-                //secondScale.BeginAnimation(ScaleTransform.ScaleXProperty, nodeDa);
-                //secondScale.BeginAnimation(ScaleTransform.ScaleYProperty, nodeDa);
             }
         }
 
@@ -667,7 +667,7 @@ namespace EESystem
                     break;
             }
 
-
+            label.MouseDown += TextClicked;
             label.RenderTransform = _transform;
             var inversed = _transform.Inverse;
             var newPoinst = inversed.Transform(mousePosition);
@@ -677,6 +677,38 @@ namespace EESystem
 
             return label;
         }
+
+        private void TextClicked(object sender, MouseButtonEventArgs e)
+        {
+            Label label = (Label)sender;
+            textWindow = new TextWindow();
+
+            var group = uiGroupElements.FirstOrDefault(x => x.Parent == label);
+
+            textWindow.SetValues(label.Content.ToString(), label.FontSize);
+
+            textWindow.ShowDialog();
+            
+            Point point = new Point();
+            point.X = Canvas.GetLeft(label);
+            point.Y = Canvas.GetTop(label);
+            var inversed = _transform.Inverse;
+            var newPoinst = _transform.Transform(point);
+
+            if (group != null)
+            {
+                uiGroupElements.Remove(group);
+                var newLabel = DrawTextOnCanvas(newPoinst, textWindow.TextMessage, textWindow.TextFontSize, textWindow.TextForeground);
+                CanvasArea.Children.Add(newLabel);
+                uiGroupElements.Add(new UIGroupElement()
+                {
+                    Parent = newLabel,
+                });
+                DrawingElements.Remove(label);
+                CanvasArea.Children.Remove(label);
+            }
+        }
+
 
         private void DrawPolygonPoints(object sender, MouseButtonEventArgs e)
         {
@@ -888,6 +920,11 @@ namespace EESystem
                     CanvasArea.Children.Remove(last.Child);
                 }
             }
+        }
+
+        private void Redo(object sender, RoutedEventArgs e)
+        {
+
         }
 
         private void Clear(object sender, RoutedEventArgs e)
