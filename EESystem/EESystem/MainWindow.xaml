@@ -15,7 +15,10 @@
                 <Button Panel.ZIndex="30" Height="40" Width="100" Margin="10" Click="Draw">Draw EE System</Button>
                 <Button x:Name="DrawEllipseBtn" Panel.ZIndex="30" Height="40" Width="100" Margin="10" Click="DrawEllipse">Draw Ellipse</Button>
                 <Button x:Name="DrawPolygonBtn" Panel.ZIndex="30" Height="40" Width="100" Margin="10" Click="DrawPolygon">Draw Polygon</Button>
+                <Button x:Name="DrawTextBtn" Panel.ZIndex="30" Height="40" Width="100" Margin="10" Click="DrawText">Draw Text</Button>
                 <Button x:Name="NoneBtn" Panel.ZIndex="30" Height="40" Width="100" Margin="10" Click="DisableDraw">Disable Drawing</Button>
+                <Button x:Name="UndoBtn" Panel.ZIndex="30" Height="40" Width="100" Margin="100 0 0 0" Click="Undo">Undo</Button>
+                <Button x:Name="ClearBtn" Panel.ZIndex="30" Height="40" Width="100" Margin="10" Click="Clear">Clear</Button>
             </StackPanel>
             <CustomControls:PanAndZoomCanvas x:Name="CanvasArea"/>
             <fa:ImageAwesome x:Name="LoadingIcon" Icon="Spinner" Spin="True" SpinDuration="2" Height="50" Width="50"/>

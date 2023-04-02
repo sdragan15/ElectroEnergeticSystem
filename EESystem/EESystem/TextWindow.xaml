@@ -1,17 +1,19 @@
-﻿<Window x:Class="EESystem.PolygonWindow"
+﻿<Window x:Class="EESystem.TextWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:EESystem"
         mc:Ignorable="d"
-        Title="PolygonWindow" Height="380" Width="250">
+        Title="TextWindow" Height="380" Width="250">
     <Grid>
         <StackPanel>
-            <Label Margin="20 10" FontSize="17" HorizontalContentAlignment="Center">Draw Polygon:</Label>
-            <Label HorizontalAlignment="Center">Stroke Thickness</Label>
-            <TextBox x:Name="StrokeThickness" Margin="10 0 10 10"></TextBox>
-            <Label HorizontalAlignment="Center">Background</Label>
+            <Label Margin="20 10" FontSize="17" HorizontalContentAlignment="Center">Draw Text:</Label>
+            <Label HorizontalAlignment="Center">Text</Label>
+            <TextBox x:Name="Text" Margin="10 0 10 10"></TextBox>
+            <Label HorizontalAlignment="Center">Font Size</Label>
+            <TextBox x:Name="FontSize" Margin="10 0 10 10"></TextBox>
+            <Label HorizontalAlignment="Center">Foreground</Label>
             <ComboBox x:Name="ColorsCb" Width="200" Margin="10 0 10 10">
                 <ComboBoxItem>Black</ComboBoxItem>
                 <ComboBoxItem>Red</ComboBoxItem>

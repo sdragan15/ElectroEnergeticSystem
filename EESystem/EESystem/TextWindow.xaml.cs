@@ -16,15 +16,16 @@ using System.Windows.Shapes;
 namespace EESystem
 {
     /// <summary>
-    /// Interaction logic for PolygonWindow.xaml
+    /// Interaction logic for TextWindow.xaml
     /// </summary>
-    public partial class PolygonWindow : Window
+    public partial class TextWindow : Window
     {
-        public double PolygonStrokeThickness;
+        public string TextMessage;
+        public double TextFontSize;
         public bool IsValid = true;
-        public ColorsEnum PolygonBackground;
+        public ColorsEnum TextForeground;
 
-        public PolygonWindow()
+        public TextWindow()
         {
             InitializeComponent();
         }
@@ -33,7 +34,11 @@ namespace EESystem
         {
             IsValid = true;
 
-            if (!double.TryParse(StrokeThickness.Text, out PolygonStrokeThickness))
+            TextMessage = Text.Text;
+            if (String.IsNullOrEmpty(TextMessage))
+                IsValid = false;
+
+            if (!double.TryParse(FontSize.Text, out TextFontSize))
                 IsValid = false;
 
             ComboBoxItem typeItem = (ComboBoxItem)ColorsCb.SelectedItem;
@@ -47,22 +52,22 @@ namespace EESystem
                 switch (value)
                 {
                     case "Black":
-                        PolygonBackground = ColorsEnum.BLACK;
+                        TextForeground = ColorsEnum.BLACK;
                         break;
                     case "Red":
-                        PolygonBackground = ColorsEnum.RED;
+                        TextForeground = ColorsEnum.RED;
                         break;
                     case "Green":
-                        PolygonBackground = ColorsEnum.GREEN;
+                        TextForeground = ColorsEnum.GREEN;
                         break;
                     case "Blue":
-                        PolygonBackground = ColorsEnum.BLUE;
+                        TextForeground = ColorsEnum.BLUE;
                         break;
                     case "Yellow":
-                        PolygonBackground = ColorsEnum.YELLOW;
+                        TextForeground = ColorsEnum.YELLOW;
                         break;
                     default:
-                        PolygonBackground = ColorsEnum.NONE;
+                        TextForeground = ColorsEnum.NONE;
                         IsValid = false;
                         break;
                 }
@@ -77,7 +82,5 @@ namespace EESystem
                 ErrorMsg.Visibility = Visibility.Visible;
             }
         }
-
-
     }
 }

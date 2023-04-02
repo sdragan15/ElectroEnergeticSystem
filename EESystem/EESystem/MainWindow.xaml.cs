@@ -54,12 +54,17 @@ namespace EESystem
         List<LineEntity> lines = new List<LineEntity>();
         List<SwitchEntity> switches = new List<SwitchEntity>();
         List<List<Coordinates>> path = new List<List<Coordinates>>();
+        List<UIGroupElement> uiGroupElements = new List<UIGroupElement>();
 
         public List<UIElement> DrawingElements = new List<UIElement>();
+        public List<DrawingItem> PolygonPoints = new List<DrawingItem>();
+        public List<UIElement> PolygonUIElements = new List<UIElement>();
 
         public EllipseWindow ellipseWindow = new EllipseWindow();
         public PolygonWindow polygonWindow = new PolygonWindow();
         public PanAndZoomCanvas panAndZoomCanvas = new PanAndZoomCanvas();
+        public TextWindow textWindow = new TextWindow();
+        public bool IsMouseMoved = false;
 
         Thread bfsThread = null;
         private bool showed = false;
@@ -74,6 +79,7 @@ namespace EESystem
 
             MouseDown += DrawOnCanvas;
             MouseMove += PanAndZoomCanvas_MouseMove;
+            MouseUp += DrawPolygonPoints;
 
             Thread loadingThread = new Thread(Loading);
             loadingThread.Start();
@@ -519,6 +525,21 @@ namespace EESystem
 
             DrawPolygonBtn.ClearValue(Button.BackgroundProperty);
             DrawPolygonBtn.ClearValue(Button.ForegroundProperty);
+            DrawTextBtn.ClearValue(Button.BackgroundProperty);
+            DrawTextBtn.ClearValue(Button.ForegroundProperty);
+
+        }
+
+        private void DrawText(object sender, RoutedEventArgs e)
+        {
+            mode = ModeEnum.TEXT;
+            DrawTextBtn.Background = new SolidColorBrush(Colors.Blue);
+            DrawTextBtn.Foreground = new SolidColorBrush(Colors.White);
+
+            DrawPolygonBtn.ClearValue(Button.BackgroundProperty);
+            DrawPolygonBtn.ClearValue(Button.ForegroundProperty);
+            DrawEllipseBtn.ClearValue(Button.BackgroundProperty);
+            DrawEllipseBtn.ClearValue(Button.ForegroundProperty);
         }
 
         private void DrawPolygon(object sender, RoutedEventArgs e)
@@ -529,12 +550,10 @@ namespace EESystem
 
             DrawEllipseBtn.ClearValue(Button.BackgroundProperty);
             DrawEllipseBtn.ClearValue(Button.ForegroundProperty);
+            DrawTextBtn.ClearValue(Button.BackgroundProperty);
+            DrawTextBtn.ClearValue(Button.ForegroundProperty);
         }
 
-        private void DrawText(object sender, RoutedEventArgs e)
-        {
-            mode = ModeEnum.TEXT;
-        }
 
         private void DisableDraw(object sender, RoutedEventArgs e)
         {
@@ -545,17 +564,22 @@ namespace EESystem
 
             DrawPolygonBtn.ClearValue(Button.BackgroundProperty);
             DrawPolygonBtn.ClearValue(Button.ForegroundProperty);
+
+            DrawTextBtn.ClearValue(Button.BackgroundProperty);
+            DrawTextBtn.ClearValue(Button.ForegroundProperty);
         }
+
 
 
         private void DrawOnCanvas(object sender, MouseButtonEventArgs e)
         {
+            var mousePosition = e.GetPosition(CanvasArea);
+
             if (e.ChangedButton == MouseButton.Left)
             {
-                _initialMousePosition = _transform.Inverse.Transform(e.GetPosition(this));
+                _initialMousePosition = _transform.Inverse.Transform(e.GetPosition(CanvasArea));
             }
 
-            var mousePosition = e.GetPosition(this);
             if (e.ChangedButton == MouseButton.Right)
             {
                 if (mode == ModeEnum.ELLIPSE)
@@ -568,10 +592,165 @@ namespace EESystem
 
                 if (mode == ModeEnum.POLYGON)
                 {
-                    polygonWindow.ShowDialog();
+                    if(PolygonPoints.Count >= 3)
+                    {
+                        polygonWindow = new PolygonWindow();
+                        polygonWindow.ShowDialog();
+
+                        PointCollection pointsColl = new PointCollection();
+                        var inverse = _transform.Inverse;
+                        foreach (var point in PolygonPoints)
+                        {
+                            var newPoinst = inverse.Transform(new Point()
+                            {
+                                X = point.X,
+                                Y = point.Y
+                            });
+                            pointsColl.Add(new Point()
+                            {
+                                X = newPoinst.X,
+                                Y = newPoinst.Y
+                            });
+                        }
+                        DrawPolygon(mousePosition, pointsColl);
+                        foreach(var point in PolygonUIElements)
+                        {
+                            CanvasArea.Children.Remove(point);
+                        }
+
+                        PolygonUIElements.Clear();
+                        PolygonPoints.Clear();
+                    }
+                    
+                }
+
+                if(mode == ModeEnum.TEXT)
+                {
+                    textWindow = new TextWindow();
+                    textWindow.ShowDialog();
+
+                    Label label = DrawTextOnCanvas(mousePosition, textWindow.TextMessage, textWindow.TextFontSize, 
+                        textWindow.TextForeground);
+                    CanvasArea.Children.Add(label);
+                    uiGroupElements.Add(new UIGroupElement()
+                    {
+                        Parent = label
+                    });
+
                 }
             }
             
+        }
+
+        private Label DrawTextOnCanvas(Point mousePosition, string text, double fontSize, ColorsEnum color, double x = 0, double y = 0)
+        {
+            Label label = new Label();
+            label.Content = text;
+            label.FontSize = fontSize;
+
+            switch (color)
+            {
+                case ColorsEnum.BLACK:
+                    label.Foreground = new SolidColorBrush(Colors.Black);
+                    break;
+                case ColorsEnum.RED:
+                    label.Foreground = new SolidColorBrush(Colors.Red);
+                    break;
+                case ColorsEnum.GREEN:
+                    label.Foreground = new SolidColorBrush(Colors.Green);
+                    break;
+                case ColorsEnum.YELLOW:
+                    label.Foreground = new SolidColorBrush(Colors.Yellow);
+                    break;
+                case ColorsEnum.BLUE:
+                    label.Foreground = new SolidColorBrush(Colors.Blue);
+                    break;
+            }
+
+
+            label.RenderTransform = _transform;
+            var inversed = _transform.Inverse;
+            var newPoinst = inversed.Transform(mousePosition);
+
+            Canvas.SetTop(label, newPoinst.Y + y);
+            Canvas.SetLeft(label, newPoinst.X + x);
+
+            return label;
+        }
+
+        private void DrawPolygonPoints(object sender, MouseButtonEventArgs e)
+        {
+            if (IsMouseMoved)
+            {
+                IsMouseMoved = false;
+                return;
+            }
+            IsMouseMoved = false;
+                
+            var mousePosition = e.GetPosition(CanvasArea);
+
+            if (mode == ModeEnum.POLYGON)
+            {
+                Ellipse ellipse = new Ellipse();
+                ellipse.Width = 5;
+                ellipse.Height = 5;
+                ellipse.Fill = new SolidColorBrush(Colors.Black);
+                ellipse.Uid = Guid.NewGuid().ToString();
+
+                ellipse.RenderTransform = _transform;
+                var inversed = _transform.Inverse;
+                var newPoinst = inversed.Transform(mousePosition);
+
+                Canvas.SetTop(ellipse, newPoinst.Y);
+                Canvas.SetLeft(ellipse, newPoinst.X);
+
+                CanvasArea.Children.Add(ellipse);
+
+                PolygonUIElements.Add(ellipse);
+                PolygonPoints.Add(new DrawingItem()
+                {
+                    Uid = ellipse.Uid,
+                    X = mousePosition.X,
+                    Y = mousePosition.Y,
+                });
+            }
+            
+        }
+
+        private void DrawPolygon(Point mousePosition, PointCollection points)
+        {
+            Polygon polygon = new Polygon();
+            polygon.Points = points;
+            polygon.StrokeThickness = polygonWindow.PolygonStrokeThickness;
+            polygon.Stroke = new SolidColorBrush(Colors.Black);
+            var background = polygonWindow.PolygonBackground;
+
+            switch (background)
+            {
+                case ColorsEnum.BLACK:
+                    polygon.Fill = new SolidColorBrush(Colors.Black);
+                    break;
+                case ColorsEnum.RED:
+                    polygon.Fill = new SolidColorBrush(Colors.Red);
+                    break;
+                case ColorsEnum.GREEN:
+                    polygon.Fill = new SolidColorBrush(Colors.Green);
+                    break;
+                case ColorsEnum.YELLOW:
+                    polygon.Fill = new SolidColorBrush(Colors.Yellow);
+                    break;
+                case ColorsEnum.BLUE:
+                    polygon.Fill = new SolidColorBrush(Colors.Blue);
+                    break;
+            }
+
+            polygon.RenderTransform = _transform;
+            uiGroupElements.Add(new UIGroupElement()
+            {
+                Parent = polygon
+            });
+
+            CanvasArea.Children.Add(polygon);
         }
 
         private void DrawEllipse(Point mousePosition)
@@ -614,6 +793,16 @@ namespace EESystem
                 ellipse.MouseDown += EllipseClicked;
 
                 DrawingElements.Add(ellipse);
+                UIGroupElement group = new UIGroupElement();
+                group.Parent = ellipse;
+                if (ellipseWindow.EllipseAddText)
+                {
+                    group.Child = DrawTextOnCanvas(mousePosition, ellipseWindow.TextMessage, 14, ellipseWindow.TextForeground,
+                        0, ellipse.Height/2 - 10);
+                    CanvasArea.Children.Add(group.Child);
+                    Canvas.SetZIndex(group.Child, 30);
+                }
+                
 
                 ellipse.RenderTransform = _transform;
                 var inversed = _transform.Inverse;
@@ -622,6 +811,8 @@ namespace EESystem
                 Canvas.SetTop(ellipse, newPoinst.Y);
                 Canvas.SetLeft(ellipse, newPoinst.X);
 
+                uiGroupElements.Add(group);
+
                 CanvasArea.Children.Add(ellipse);
 
             }
@@ -629,9 +820,26 @@ namespace EESystem
 
         private void EllipseClicked(object sender, RoutedEventArgs e)
         {
+            Label label = new Label();
+            string text = "";
+            bool isText = false;
             var ellipse = (Ellipse)sender;
+            var group = uiGroupElements.FirstOrDefault(x => x.Parent == ellipse);
+            if (group != null && group.Child != null)
+            {
+                label = (Label)group.Child;
+                isText = true;
+                text = label.Content.ToString();
+                CanvasArea.Children.Remove(group.Child);
+            }
+            else
+            {
+                isText = false;
+            }
+
             ellipseWindow = new EllipseWindow();
-            ellipseWindow.SetValues(ellipse.Width, ellipse.Height, ellipse.StrokeThickness, ColorsEnum.BLACK);
+            ellipseWindow.SetValues(ellipse.Width, ellipse.Height, ellipse.StrokeThickness, ColorsEnum.BLACK, 
+                text, isText);
             ellipseWindow.ShowDialog();
             Point point = new Point();
             point.X = Canvas.GetLeft(ellipse);
@@ -639,17 +847,22 @@ namespace EESystem
             var inversed = _transform.Inverse;
             var newPoinst = _transform.Transform(point);
 
-            DrawEllipse(newPoinst);
-            DrawingElements.Remove(ellipse);
-            CanvasArea.Children.Remove(ellipse);
+            if(group != null)
+            {
+                uiGroupElements.Remove(group);
+                DrawEllipse(newPoinst);
+                DrawingElements.Remove(ellipse);
+                CanvasArea.Children.Remove(ellipse);
+            }
+
         }
 
         private void PanAndZoomCanvas_MouseMove(object sender, MouseEventArgs e)
         {
-
             if (e.LeftButton == MouseButtonState.Pressed)
             {
-                Point mousePosition = _transform.Inverse.Transform(e.GetPosition(this));
+                IsMouseMoved = true;
+                Point mousePosition = _transform.Inverse.Transform(e.GetPosition(CanvasArea));
                 Vector delta = Point.Subtract(mousePosition, _initialMousePosition);
                 var translate = new TranslateTransform(delta.X, delta.Y);
                 _transform.Matrix = translate.Value * _transform.Matrix;
@@ -661,5 +874,39 @@ namespace EESystem
 
         }
 
+        private void Undo(object sender, RoutedEventArgs e)
+        {
+            if(uiGroupElements.Count > 0)
+            {
+                var last = uiGroupElements[uiGroupElements.Count - 1];
+                if(last.Parent != null)
+                {
+                    CanvasArea.Children.Remove(last.Parent);
+                }
+                if (last.Child != null)
+                {
+                    CanvasArea.Children.Remove(last.Child);
+                }
+            }
+        }
+
+        private void Clear(object sender, RoutedEventArgs e)
+        {
+            if (uiGroupElements.Count > 0)
+            {
+                foreach(var last in uiGroupElements)
+                {
+                    if (last.Parent != null)
+                    {
+                        CanvasArea.Children.Remove(last.Parent);
+                    }
+                    if (last.Child != null)
+                    {
+                        CanvasArea.Children.Remove(last.Child);
+                    }
+                }
+               
+            }
+        }
     }
 }

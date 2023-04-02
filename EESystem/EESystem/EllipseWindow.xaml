@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:EESystem"
         mc:Ignorable="d"
-        Title="EllipseWindow" Height="380" Width="250">
+        Title="EllipseWindow" Height="500" Width="250">
     <Grid>
         <StackPanel>
             <Label Margin="20 10" FontSize="17" HorizontalContentAlignment="Center">Draw Ellipse:</Label>
@@ -17,6 +17,18 @@
             <TextBox x:Name="StrokeThickness" Margin="10 0 10 10"></TextBox>
             <Label HorizontalAlignment="Center">Background</Label>
             <ComboBox x:Name="ColorsCb" Width="200" Margin="10 0 10 10">
+                <ComboBoxItem>Black</ComboBoxItem>
+                <ComboBoxItem>Red</ComboBoxItem>
+                <ComboBoxItem>Green</ComboBoxItem>
+                <ComboBoxItem>Blue</ComboBoxItem>
+                <ComboBoxItem>Yellow</ComboBoxItem>
+            </ComboBox>
+            
+            <CheckBox x:Name="TextChb" HorizontalAlignment="Center" Margin="10">Add Text</CheckBox>
+            <Label HorizontalAlignment="Center">Text</Label>
+            <TextBox x:Name="TextInput" Margin="10 0 10 10"></TextBox>
+            <Label HorizontalAlignment="Center">Foreground</Label>
+            <ComboBox x:Name="ForegroundCb" Width="200" Margin="10 0 10 10">
                 <ComboBoxItem>Black</ComboBoxItem>
                 <ComboBoxItem>Red</ComboBoxItem>
                 <ComboBoxItem>Green</ComboBoxItem>

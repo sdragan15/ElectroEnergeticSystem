@@ -25,9 +25,13 @@ namespace EESystem
         public double EllipseStrokeThickness;
         public bool IsValid = true;
         public ColorsEnum EllipseBackground;
+        public bool EllipseAddText;
+        public ColorsEnum TextForeground;
+        public string TextMessage;
 
         public EllipseWindow()
         {
+            EllipseAddText = false;
             InitializeComponent();
             IsValid = true;
         }
@@ -76,6 +80,44 @@ namespace EESystem
 
             }
 
+            EllipseAddText = TextChb.IsChecked ?? false;
+            if (EllipseAddText)
+            {
+                TextMessage = TextInput.Text;
+
+                ComboBoxItem foreground = (ComboBoxItem)ForegroundCb.SelectedItem;
+                if (foreground == null)
+                {
+                    IsValid = false;
+                }
+                else
+                {
+                    string value = foreground.Content.ToString();
+                    switch (value)
+                    {
+                        case "Black":
+                            TextForeground = ColorsEnum.BLACK;
+                            break;
+                        case "Red":
+                            TextForeground = ColorsEnum.RED;
+                            break;
+                        case "Green":
+                            TextForeground = ColorsEnum.GREEN;
+                            break;
+                        case "Blue":
+                            TextForeground = ColorsEnum.BLUE;
+                            break;
+                        case "Yellow":
+                            TextForeground = ColorsEnum.YELLOW;
+                            break;
+                        default:
+                            TextForeground = ColorsEnum.NONE;
+                            IsValid = false;
+                            break;
+                    }
+
+                }
+            }
 
             if (IsValid)
                 this.Close();
@@ -86,11 +128,14 @@ namespace EESystem
             }
         }
 
-        public void SetValues(double width, double height, double strokeThickness, ColorsEnum background)
+        public void SetValues(double width, double height, double strokeThickness, ColorsEnum background, 
+            string text, bool isChecked)
         {
             XRadius.Text = width.ToString();
             YRadius.Text = height.ToString();
             StrokeThickness.Text = strokeThickness.ToString();
+            TextInput.Text = text;
+            TextChb.IsChecked = isChecked;
         }
     }
 }
