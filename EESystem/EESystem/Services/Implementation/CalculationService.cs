@@ -449,74 +449,74 @@ namespace EESystem.Services.Implementation
                 points = CalculateEdgeCoords(new Coordinates(start.X, start.Y), new Coordinates(end.X, end.Y));
 
                 var valid = true;
-                for(int i=0; i<points.Count(); i++)
-                {
-                    tempX = (int)Math.Floor((points[i].X + width / 2) / _resolution);
-                    tempY = (int)Math.Floor((points[i].Y + width / 2) / _resolution);
+                //for(int i=0; i<points.Count(); i++)
+                //{
+                //    tempX = (int)Math.Floor((points[i].X + width / 2) / _resolution);
+                //    tempY = (int)Math.Floor((points[i].Y + width / 2) / _resolution);
 
-                    bool top = false;
-                    bool left = false;
-                    bool right = false;
-                    bool bottom = false;
+                //    bool top = false;
+                //    bool left = false;
+                //    bool right = false;
+                //    bool bottom = false;
 
-                    bool topSec = false;
-                    bool leftSec = false;
-                    bool rightSec = false;
-                    bool bottomSec = false;
+                //    bool topSec = false;
+                //    bool leftSec = false;
+                //    bool rightSec = false;
+                //    bool bottomSec = false;
 
-                    if (matrix[tempX, tempY] == 2 && i > 0 && i < points.Count() - 1)
-                    {
+                //    if (matrix[tempX, tempY] == 2 && i > 0 && i < points.Count() - 1)
+                //    {
 
-                        for (int k = -1; k <= 1; k += 2)
-                        {
-                            if (points[i + k].X == points[i].X && points[i + k].Y > points[i].Y)
-                                bottom = true;
-                            if (points[i + k].X == points[i].X && points[i + k].Y < points[i].Y)
-                                top = true;
-                            if (points[i + k].X < points[i].X && points[i + k].Y == points[i].Y)
-                                left = true;
-                            if (points[i + k].X > points[i].X && points[i + k].Y == points[i].Y)
-                                right = true;
-                        }
+                //        for (int k = -1; k <= 1; k += 2)
+                //        {
+                //            if (points[i + k].X == points[i].X && points[i + k].Y > points[i].Y)
+                //                bottom = true;
+                //            if (points[i + k].X == points[i].X && points[i + k].Y < points[i].Y)
+                //                top = true;
+                //            if (points[i + k].X < points[i].X && points[i + k].Y == points[i].Y)
+                //                left = true;
+                //            if (points[i + k].X > points[i].X && points[i + k].Y == points[i].Y)
+                //                right = true;
+                //        }
 
-                        var newPaths = allPaths.Where(x => x.Contains(points[i])).ToList();
-                        foreach (var item in newPaths)
-                        {
-                            var coord = item.FirstOrDefault(x => x.X == points[i].X && x.Y == points[i].Y);
+                //        var newPaths = allPaths.Where(x => x.Contains(points[i])).ToList();
+                //        foreach (var item in newPaths)
+                //        {
+                //            var coord = item.FirstOrDefault(x => x.X == points[i].X && x.Y == points[i].Y);
                             
-                            if (coord != null)
-                            {
-                                var id = item.IndexOf(coord);
-                                if(id > 0 && id < item.Count() - 1)
-                                {
-                                    for (int k = -1; k <= 1; k += 2)
-                                    {
-                                        if (item[id + k].X == item[id].X && item[id + k].Y > item[id].Y)
-                                            bottomSec = true;
-                                        if (item[id + k].X == item[id].X && item[id + k].Y < item[id].Y)
-                                            topSec = true;
-                                        if (item[id + k].X < item[id].X && item[id + k].Y == item[id].Y)
-                                            leftSec = true;
-                                        if (item[id + k].X > item[id].X && item[id + k].Y == item[id].Y)
-                                            rightSec = true;
-                                    }
+                //            if (coord != null)
+                //            {
+                //                var id = item.IndexOf(coord);
+                //                if(id > 0 && id < item.Count() - 1)
+                //                {
+                //                    for (int k = -1; k <= 1; k += 2)
+                //                    {
+                //                        if (item[id + k].X == item[id].X && item[id + k].Y > item[id].Y)
+                //                            bottomSec = true;
+                //                        if (item[id + k].X == item[id].X && item[id + k].Y < item[id].Y)
+                //                            topSec = true;
+                //                        if (item[id + k].X < item[id].X && item[id + k].Y == item[id].Y)
+                //                            leftSec = true;
+                //                        if (item[id + k].X > item[id].X && item[id + k].Y == item[id].Y)
+                //                            rightSec = true;
+                //                    }
 
-                                    if (top ^ topSec && right ^ rightSec && left ^ leftSec && bottom ^ bottomSec)
-                                    {
-                                        intersection.Add(new Coordinates(item[id].X, item[id].Y));
-                                    }
-                                }
-                            }                            
-                        }
-                    }
+                //                    if (top ^ topSec && right ^ rightSec && left ^ leftSec && bottom ^ bottomSec)
+                //                    {
+                //                        intersection.Add(new Coordinates(item[id].X, item[id].Y));
+                //                    }
+                //                }
+                //            }                            
+                //        }
+                //    }
 
-                    if(tempX < 0 || tempY < 0 || tempX > 300 || tempY > 240)
-                    {
-                        valid = false;
-                        break;
-                    }
-                    matrix[tempX, tempY] = 2;
-                }
+                //    if(tempX < 0 || tempY < 0 || tempX > 300 || tempY > 240)
+                //    {
+                //        valid = false;
+                //        break;
+                //    }
+                //    matrix[tempX, tempY] = 2;
+                //}
 
                 
 

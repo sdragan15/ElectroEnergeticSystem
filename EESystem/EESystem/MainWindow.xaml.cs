@@ -10,10 +10,11 @@ using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
-
+using WpfPanAndZoom.CustomControls;
 
 namespace EESystem
 {
@@ -22,6 +23,8 @@ namespace EESystem
     /// </summary>
     public partial class MainWindow
     {
+        private MatrixTransform _transform = new MatrixTransform();
+        private Point _initialMousePosition;
         public double CanvasWidth = 1200;
         public double CanvasHeight = 800;
         private IFileService _fileService;
@@ -36,6 +39,7 @@ namespace EESystem
         private const int matrixHeight = 1200;
 
         private bool switchesShowed = false;
+        private ModeEnum mode = ModeEnum.NONE;
 
         private List<List<Coordinates>> allPaths = new List<List<Coordinates>>();
         private List<Coordinates> intersections = new List<Coordinates>();
@@ -51,6 +55,12 @@ namespace EESystem
         List<SwitchEntity> switches = new List<SwitchEntity>();
         List<List<Coordinates>> path = new List<List<Coordinates>>();
 
+        public List<UIElement> DrawingElements = new List<UIElement>();
+
+        public EllipseWindow ellipseWindow = new EllipseWindow();
+        public PolygonWindow polygonWindow = new PolygonWindow();
+        public PanAndZoomCanvas panAndZoomCanvas = new PanAndZoomCanvas();
+
         Thread bfsThread = null;
         private bool showed = false;
 
@@ -61,6 +71,9 @@ namespace EESystem
             _fileService = new FileService(_calcService, "Geographic.xml", CanvasWidth, CanvasHeight);
 
             InitializeComponent();
+
+            MouseDown += DrawOnCanvas;
+            MouseMove += PanAndZoomCanvas_MouseMove;
 
             Thread loadingThread = new Thread(Loading);
             loadingThread.Start();
@@ -79,7 +92,7 @@ namespace EESystem
 
         private void Loading()
         {
-            Thread.Sleep(12000);
+            Thread.Sleep(2000);
             Dispatcher.Invoke(() =>
             {
                 MyGrid.Children.Remove(LoadingElement);
@@ -494,6 +507,156 @@ namespace EESystem
             else
             {
                 LoadSwitches();
+            }
+
+        }
+
+        private void DrawEllipse(object sender, RoutedEventArgs e)
+        {
+            mode = ModeEnum.ELLIPSE;
+            DrawEllipseBtn.Background = new SolidColorBrush(Colors.Blue);
+            DrawEllipseBtn.Foreground = new SolidColorBrush(Colors.White);
+
+            DrawPolygonBtn.ClearValue(Button.BackgroundProperty);
+            DrawPolygonBtn.ClearValue(Button.ForegroundProperty);
+        }
+
+        private void DrawPolygon(object sender, RoutedEventArgs e)
+        {
+            mode = ModeEnum.POLYGON;
+            DrawPolygonBtn.Background = new SolidColorBrush(Colors.Blue);
+            DrawPolygonBtn.Foreground = new SolidColorBrush(Colors.White);
+
+            DrawEllipseBtn.ClearValue(Button.BackgroundProperty);
+            DrawEllipseBtn.ClearValue(Button.ForegroundProperty);
+        }
+
+        private void DrawText(object sender, RoutedEventArgs e)
+        {
+            mode = ModeEnum.TEXT;
+        }
+
+        private void DisableDraw(object sender, RoutedEventArgs e)
+        {
+            mode = ModeEnum.NONE;
+
+            DrawEllipseBtn.ClearValue(Button.BackgroundProperty);
+            DrawEllipseBtn.ClearValue(Button.ForegroundProperty);
+
+            DrawPolygonBtn.ClearValue(Button.BackgroundProperty);
+            DrawPolygonBtn.ClearValue(Button.ForegroundProperty);
+        }
+
+
+        private void DrawOnCanvas(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+            {
+                _initialMousePosition = _transform.Inverse.Transform(e.GetPosition(this));
+            }
+
+            var mousePosition = e.GetPosition(this);
+            if (e.ChangedButton == MouseButton.Right)
+            {
+                if (mode == ModeEnum.ELLIPSE)
+                {
+                    ellipseWindow = new EllipseWindow();
+                    ellipseWindow.ShowDialog();
+
+                    DrawEllipse(mousePosition);
+                }
+
+                if (mode == ModeEnum.POLYGON)
+                {
+                    polygonWindow.ShowDialog();
+                }
+            }
+            
+        }
+
+        private void DrawEllipse(Point mousePosition)
+        {
+            if (ellipseWindow.IsValid)
+            {
+                var width = ellipseWindow.EllipseWidth;
+                var height = ellipseWindow.EllipseHeight;
+                var strokeThickness = ellipseWindow.EllipseStrokeThickness;
+                var background = ellipseWindow.EllipseBackground;
+
+
+                Ellipse ellipse = new Ellipse();
+                ellipse.Width = width;
+                ellipse.Height = height;
+                ellipse.StrokeThickness = strokeThickness;
+                ellipse.Uid = Guid.NewGuid().ToString();
+                ellipse.Stroke = new SolidColorBrush(Colors.Black);
+                ellipse.Fill = new SolidColorBrush(Colors.Black);
+
+                switch (background)
+                {
+                    case ColorsEnum.BLACK:
+                        ellipse.Fill = new SolidColorBrush(Colors.Black);
+                        break;
+                    case ColorsEnum.RED:
+                        ellipse.Fill = new SolidColorBrush(Colors.Red);
+                        break;
+                    case ColorsEnum.GREEN:
+                        ellipse.Fill = new SolidColorBrush(Colors.Green);
+                        break;
+                    case ColorsEnum.YELLOW:
+                        ellipse.Fill = new SolidColorBrush(Colors.Yellow);
+                        break;
+                    case ColorsEnum.BLUE:
+                        ellipse.Fill = new SolidColorBrush(Colors.Blue);
+                        break;
+                }
+
+                ellipse.MouseDown += EllipseClicked;
+
+                DrawingElements.Add(ellipse);
+
+                ellipse.RenderTransform = _transform;
+                var inversed = _transform.Inverse;
+                var newPoinst = inversed.Transform(mousePosition);
+
+                Canvas.SetTop(ellipse, newPoinst.Y);
+                Canvas.SetLeft(ellipse, newPoinst.X);
+
+                CanvasArea.Children.Add(ellipse);
+
+            }
+        }
+
+        private void EllipseClicked(object sender, RoutedEventArgs e)
+        {
+            var ellipse = (Ellipse)sender;
+            ellipseWindow = new EllipseWindow();
+            ellipseWindow.SetValues(ellipse.Width, ellipse.Height, ellipse.StrokeThickness, ColorsEnum.BLACK);
+            ellipseWindow.ShowDialog();
+            Point point = new Point();
+            point.X = Canvas.GetLeft(ellipse);
+            point.Y = Canvas.GetTop(ellipse);
+            var inversed = _transform.Inverse;
+            var newPoinst = _transform.Transform(point);
+
+            DrawEllipse(newPoinst);
+            DrawingElements.Remove(ellipse);
+            CanvasArea.Children.Remove(ellipse);
+        }
+
+        private void PanAndZoomCanvas_MouseMove(object sender, MouseEventArgs e)
+        {
+
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                Point mousePosition = _transform.Inverse.Transform(e.GetPosition(this));
+                Vector delta = Point.Subtract(mousePosition, _initialMousePosition);
+                var translate = new TranslateTransform(delta.X, delta.Y);
+                _transform.Matrix = translate.Value * _transform.Matrix;
+                foreach (UIElement child in CanvasArea.Children)
+                {
+                    child.RenderTransform = _transform;
+                }
             }
 
         }
